@@ -38,7 +38,7 @@ export const Header: React.FC<HeaderProps> = ({ currentPage, selectedTag, naviga
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-12 text-white">
-            <button onClick={() => handleNav('home')} className={`text-[11px] font-black uppercase tracking-[0.2em] transition-all relative py-2 ${currentPage === 'home' ? 'text-white font-bold' : 'text-white/60 hover:text-white'}`}>
+            <button onClick={() => handleNav('home')} translate="no" className={`text-[11px] font-black uppercase tracking-[0.2em] transition-all relative py-2 ${currentPage === 'home' ? 'text-white font-bold' : 'text-white/60 hover:text-white'}`}>
               {t('Início', 'Home')} {currentPage === 'home' && <span className="absolute bottom-0 left-0 w-full h-[2px] bg-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.5)]"></span>}
             </button>
             {[t('Novidades', 'New'), t('Roupas', 'Apparel'), t('Brindes', 'Gifts')].map(tag => (
@@ -55,7 +55,7 @@ export const Header: React.FC<HeaderProps> = ({ currentPage, selectedTag, naviga
           {/* Mobile Navigation Dropdown */}
           {isMenuOpen && (
             <div className="absolute top-full left-0 w-full bg-[#020105]/95 backdrop-blur-3xl border border-white/10 rounded-[30px] p-6 flex flex-col gap-4 md:hidden shadow-2xl z-50 animate-fade mt-2">
-              <button onClick={() => handleNav('home')} className={`text-[12px] font-black uppercase tracking-widest text-left py-3 px-4 rounded-xl ${currentPage === 'home' ? 'bg-purple-500/20 text-white' : 'text-slate-400'}`}>
+              <button onClick={() => handleNav('home')} translate="no" className={`text-[12px] font-black uppercase tracking-widest text-left py-3 px-4 rounded-xl ${currentPage === 'home' ? 'bg-purple-500/20 text-white' : 'text-slate-400'}`}>
                 {t('Início', 'Home')}
               </button>
               {[t('Novidades', 'New'), t('Roupas', 'Apparel'), t('Brindes', 'Gifts')].map(tag => (
