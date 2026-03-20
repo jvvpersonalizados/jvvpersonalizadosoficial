@@ -29,6 +29,8 @@ export const UserPanelPage: React.FC<UserPanelPageProps> = ({ user, setUser, che
   const [adminStats, setAdminStats] = useState<any>(null);
   const [promptIA, setPromptIA] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [newProduct, setNewProduct] = useState({ name: '', price: '', image: '', description: '' });
+  const [isAddingProduct, setIsAddingProduct] = useState(false);
 
   // Form states
   const [loginEmail, setLoginEmail] = useState('');
@@ -98,7 +100,7 @@ export const UserPanelPage: React.FC<UserPanelPageProps> = ({ user, setUser, che
     { id: 'dashboard', n: t('Dashboard', 'Dashboard'), i: Layout },
     { id: 'orders', n: t('Pedidos', 'Orders'), i: Package },
     { id: 'settings', n: t('Perfil', 'Profile'), i: Settings },
-    ...(user?.email === 'vitor.trindadeit@gmail.com' ? [{ id: 'admin', n: t('ADMIN', 'ADMIN'), i: ShieldIcon }] : []),
+    ...(user?.email === 'vitor.trindadeit@gmail.com' || user?.email === 'jvvpersonalizados@gmail.com' ? [{ id: 'admin', n: t('ADMIN', 'ADMIN'), i: ShieldIcon }] : []),
     { id: 'logout', n: t('Sair', 'Logout'), i: LogOut }
   ];
 
@@ -146,6 +148,42 @@ export const UserPanelPage: React.FC<UserPanelPageProps> = ({ user, setUser, che
       alert(t("Erro ao gerar postagem.", "Error generating post."));
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const handleSyncCatalog = async () => {
+    setIsLoading(true);
+    try {
+      const res = await apiService.syncCatalog();
+      if (res.success) {
+        alert(t(`Sincronização concluída! ${res.count} produtos processados.`, `Sync complete! ${res.count} products processed.`));
+        fetchAdminData();
+      } else {
+        alert(t("Erro na sincronização: " + res.error, "Sync error: " + res.error));
+      }
+    } catch (err) {
+      alert(t("Erro ao conectar com o servidor para sincronização.", "Error connecting to server for sync."));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleAddProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsAddingProduct(true);
+    try {
+      const res = await apiService.addProduct(newProduct);
+      if (res.success) {
+        alert(t("Produto adicionado com sucesso!", "Product added successfully!"));
+        setNewProduct({ name: '', price: '', image: '', description: '' });
+        fetchAdminData();
+      } else {
+        alert(t("Erro ao adicionar produto: " + (res.message || "Erro desconhecido"), "Error adding product: " + (res.message || "Unknown error")));
+      }
+    } catch (err) {
+      alert(t("Erro ao conectar com o servidor.", "Error connecting to server."));
+    } finally {
+      setIsAddingProduct(false);
     }
   };
 
@@ -322,14 +360,63 @@ export const UserPanelPage: React.FC<UserPanelPageProps> = ({ user, setUser, che
         </aside>
 
         <div className="lg:col-span-3 min-h-[400px] md:min-h-[500px]">
-          {activeTab === 'admin' && user?.email === 'vitor.trindadeit@gmail.com' && (
+          {activeTab === 'admin' && (user?.email === 'vitor.trindadeit@gmail.com' || user?.email === 'jvvpersonalizados@gmail.com') && (
             <div className="space-y-8 animate-fade">
               <header className="flex justify-between items-center mb-8">
                 <h1 className="text-2xl font-black italic text-green-400 border-l-4 border-green-500 pl-4 uppercase tracking-tighter">PAINEL MASTER ADM</h1>
-                <span className="text-[10px] bg-zinc-800 px-3 py-1 rounded-full text-zinc-400 font-bold">V57.0</span>
+                <div className="flex gap-4">
+                  <button 
+                    onClick={handleSyncCatalog}
+                    disabled={isLoading}
+                    className="flex items-center gap-2 text-[10px] bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded-full text-white font-black uppercase tracking-widest transition-all shadow-lg disabled:opacity-50"
+                  >
+                    <RefreshCw size={14} className={isLoading ? "animate-spin" : ""} />
+                    {isLoading ? t("SINCRONIZANDO...", "SYNCING...") : t("SINCRONIZAR SITE", "SYNC SITE")}
+                  </button>
+                  <span className="text-[10px] bg-zinc-800 px-3 py-1 rounded-full text-zinc-400 font-bold">V59.0</span>
+                </div>
               </header>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="bg-zinc-900 p-8 rounded-[40px] border border-white/5 shadow-2xl">
+                  <h3 className="text-lg font-black italic uppercase mb-6 text-white">{t('Adicionar Produto Manual', 'Manual Add Product')}</h3>
+                  <form onSubmit={handleAddProduct} className="space-y-4">
+                    <input 
+                      required
+                      value={newProduct.name}
+                      onChange={e => setNewProduct({...newProduct, name: e.target.value})}
+                      placeholder={t('NOME DO PRODUTO', 'PRODUCT NAME')} 
+                      className="w-full p-4 bg-zinc-800 rounded-xl border-none outline-none focus:ring-1 ring-blue-500 text-xs text-white"
+                    />
+                    <input 
+                      required
+                      value={newProduct.price}
+                      onChange={e => setNewProduct({...newProduct, price: e.target.value})}
+                      placeholder={t('PREÇO (Ex: 89.90)', 'PRICE (Ex: 89.90)')} 
+                      className="w-full p-4 bg-zinc-800 rounded-xl border-none outline-none focus:ring-1 ring-blue-500 text-xs text-white"
+                    />
+                    <input 
+                      value={newProduct.image}
+                      onChange={e => setNewProduct({...newProduct, image: e.target.value})}
+                      placeholder={t('URL DA IMAGEM', 'IMAGE URL')} 
+                      className="w-full p-4 bg-zinc-800 rounded-xl border-none outline-none focus:ring-1 ring-blue-500 text-xs text-white"
+                    />
+                    <textarea 
+                      value={newProduct.description}
+                      onChange={e => setNewProduct({...newProduct, description: e.target.value})}
+                      placeholder={t('DESCRIÇÃO', 'DESCRIPTION')} 
+                      className="w-full h-24 p-4 bg-zinc-800 rounded-xl border-none outline-none focus:ring-1 ring-blue-500 text-xs text-white resize-none"
+                    ></textarea>
+                    <button 
+                      type="submit"
+                      disabled={isAddingProduct}
+                      className="w-full py-4 bg-blue-500 text-white font-black rounded-xl hover:bg-blue-400 transition uppercase tracking-widest text-[10px] shadow-lg disabled:opacity-50"
+                    >
+                      {isAddingProduct ? t('ADICIONANDO...', 'ADDING...') : t('ADICIONAR AO CATÁLOGO', 'ADD TO CATALOG')}
+                    </button>
+                  </form>
+                </div>
+
                 <div className="bg-zinc-900 p-8 rounded-[40px] border border-white/5 shadow-2xl">
                   <h3 className="text-lg font-black italic uppercase mb-6 text-white">{t('Nova Postagem IA', 'New AI Post')}</h3>
                   <textarea 

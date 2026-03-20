@@ -1,5 +1,3 @@
-const API_URL = "https://script.google.com/macros/s/AKfycbyJp42SCiA3aiuFZIuZLCKYNRvSXplfGYTM--GO9w8ER8v7fj69PlWd0lXjMSxvVSY/exec";
-
 export interface ApiResponse {
   success: boolean;
   message?: string;
@@ -9,13 +7,11 @@ export interface ApiResponse {
 export const apiService = {
   async post(action: string, payload: any): Promise<ApiResponse> {
     try {
-      // Google Apps Script requires a POST request with parameters or a JSON body
-      // We use a URLSearchParams approach or raw JSON depending on how the script is written.
-      // Most common is sending a JSON string in the body.
-      const response = await fetch(API_URL, {
+      // Use the local proxy to avoid CORS issues with Google Apps Script
+      const response = await fetch("/api/gas-proxy", {
         method: "POST",
         headers: {
-          "Content-Type": "text/plain;charset=utf-8", // Avoid CORS preflight if possible, or use application/json
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({ action, ...payload }),
       });
@@ -24,12 +20,8 @@ export const apiService = {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const text = await response.text();
-      try {
-        return JSON.parse(text);
-      } catch (e) {
-        return { success: true, data: text };
-      }
+      const data = await response.json();
+      return data;
     } catch (error) {
       console.error("API Error:", error);
       return { success: false, message: "Erro na comunicação com o servidor galáctico." };
@@ -63,7 +55,18 @@ export const apiService = {
 
   async getCatalog() {
     const response = await this.post("getCatalog", {});
-    return response.success ? response.data : [];
+    if (response.success) {
+      if (Array.isArray(response.data)) return response.data;
+      if (typeof response.data === 'string') {
+        try {
+          const parsed = JSON.parse(response.data);
+          return Array.isArray(parsed) ? parsed : [];
+        } catch (e) {
+          return [];
+        }
+      }
+    }
+    return [];
   },
 
   async getOrders() {

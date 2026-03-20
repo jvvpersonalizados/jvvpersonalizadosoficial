@@ -59,8 +59,9 @@ export default function App() {
     const fetchCatalog = async () => {
       try {
         const res = await apiService.getCatalog();
-        if (res.success && Array.isArray(res.data)) {
-          const mapped = res.data.map((p: any, i: number) => ({
+        // apiService.getCatalog() returns the array directly or an empty array
+        if (Array.isArray(res) && res.length > 0) {
+          const mapped = res.map((p: any, i: number) => ({
             id: 2000 + i,
             name: p.name,
             price: parseFloat(p.price) || 0,
