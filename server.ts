@@ -3,7 +3,6 @@ import { createServer as createViteServer } from "vite";
 import path from "path";
 import axios from "axios";
 import * as cheerio from "cheerio";
-
 import { GoogleGenAI } from "@google/genai";
 
 const app = express();
@@ -13,6 +12,11 @@ const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 const model = "gemini-3-flash-preview";
 
 app.use(express.json());
+
+// Health check / Ping endpoint
+app.get("/api/ping", (req, res) => {
+  res.json({ success: true, message: "Pong", timestamp: new Date().toISOString() });
+});
 
 // API Route for AI Post Generation
 app.post("/api/generate-post", async (req, res) => {
@@ -47,22 +51,32 @@ app.post("/api/generate-post", async (req, res) => {
   }
 });
 
-let cachedFeed: any = null;
-let lastFetchTime = 0;
-const CACHE_DURATION = 1000 * 60 * 60; // 1 hour
-
 // API Route for Social Feed (Pinterest fallback for Instagram)
 app.get("/api/social-feed", async (req, res) => {
+  const pinterestUrl = "https://br.pinterest.com/JVVPersonalizadosPinterest/_tpd_social/";
+  const fallback = [
+    "https://images.unsplash.com/photo-1514228742587-6b1558fcca3d?auto=format&fit=crop&w=600&q=80",
+    "https://images.unsplash.com/photo-1614732484003-ef9881555dc3?auto=format&fit=crop&w=600&q=80",
+    "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=600&q=80",
+    "https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&w=600&q=80",
+    "https://images.unsplash.com/photo-1581092160562-40aa08e78837?auto=format&fit=crop&w=600&q=80",
+    "https://images.unsplash.com/photo-1572119865084-43c285814d63?auto=format&fit=crop&w=600&q=80"
+  ].map((img, i) => ({
+    id: `fallback-${i}`,
+    url: pinterestUrl,
+    image: img,
+    thumbnail: img,
+    caption: "JVV Personalizados"
+  }));
+
   try {
-    const pinterestUrl = "https://br.pinterest.com/JVVPersonalizadosPinterest/_tpd_social/";
-    
     const response = await axios.get(pinterestUrl, {
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
         "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
       },
-      timeout: 10000
+      timeout: 8000
     });
 
     const html = response.data;
@@ -100,37 +114,21 @@ app.get("/api/social-feed", async (req, res) => {
       }
     });
 
-    // Remove duplicates based on image URL
     const uniquePosts = Array.from(new Map(posts.map(item => [item.image, item])).values());
 
     if (uniquePosts.length === 0) {
-      throw new Error("No images found on Pinterest board");
+      return res.json({ success: true, posts: fallback });
     }
 
     res.json({ success: true, posts: uniquePosts.slice(0, 12) });
   } catch (error: any) {
     console.error("Pinterest fetch error:", error.message);
-    // Fallback images if scraping fails
-    const fallback = [
-      "https://images.unsplash.com/photo-1514228742587-6b1558fcca3d?auto=format&fit=crop&w=600&q=80",
-      "https://images.unsplash.com/photo-1614732484003-ef9881555dc3?auto=format&fit=crop&w=600&q=80",
-      "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=600&q=80",
-      "https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&w=600&q=80",
-      "https://images.unsplash.com/photo-1581092160562-40aa08e78837?auto=format&fit=crop&w=600&q=80",
-      "https://images.unsplash.com/photo-1572119865084-43c285814d63?auto=format&fit=crop&w=600&q=80"
-    ].map((img, i) => ({
-      id: `fallback-${i}`,
-      url: "https://br.pinterest.com/JVVPersonalizadosPinterest/_tpd_social/",
-      image: img,
-      thumbnail: img,
-      caption: "JVV Personalizados"
-    }));
     res.json({ success: true, posts: fallback });
   }
 });
 
-// API Route for Instagram Feed (Keeping for compatibility but can redirect to social-feed)
-app.get("/api/instagram", async (req, res) => {
+// API Route for Instagram Feed
+app.get("/api/instagram", (req, res) => {
   res.redirect("/api/social-feed");
 });
 
@@ -147,8 +145,6 @@ app.get("/api/sync-catalog", async (req, res) => {
     const $ = cheerio.load(response.data);
     const products: any[] = [];
 
-    // This selector is a guess based on common e-commerce patterns, 
-    // it might need adjustment based on the actual site structure.
     $(".product-item, .item, .product").each((i, el) => {
       const name = $(el).find(".product-name, .name, h2, h3").text().trim();
       const priceStr = $(el).find(".product-price, .price, .value").text().trim();
@@ -163,7 +159,6 @@ app.get("/api/sync-catalog", async (req, res) => {
       }
     });
 
-    // If the above didn't work, try a more generic approach
     if (products.length === 0) {
       $("a").each((i, el) => {
         const text = $(el).text().trim();
@@ -178,7 +173,6 @@ app.get("/api/sync-catalog", async (req, res) => {
       });
     }
 
-    // Send to Google Apps Script
     const gasUrl = "https://script.google.com/macros/s/AKfycbxwN_95NZj9ATBVKSswXdfJboRXYYqOMyOJrL2HmJ3Tlu40XnQm68TFvxDIe4Vz2clc/exec";
     await axios.post(gasUrl, {
       action: "syncCatalog",
@@ -192,30 +186,29 @@ app.get("/api/sync-catalog", async (req, res) => {
   }
 });
 
-async function startServer() {
-  // Vite middleware for development
-  if (process.env.NODE_ENV !== "production") {
+// Middleware for static files and SPA fallback
+if (process.env.NODE_ENV === "production") {
+  const distPath = path.join(process.cwd(), "dist");
+  app.use(express.static(distPath));
+  app.get("*", (req, res) => {
+    if (!req.path.startsWith("/api/")) {
+      res.sendFile(path.join(distPath, "index.html"));
+    }
+  });
+} else {
+  // Development mode with Vite
+  const setupDev = async () => {
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
     });
     app.use(vite.middlewares);
-  } else {
-    const distPath = path.join(process.cwd(), "dist");
-    app.use(express.static(distPath));
-    app.get("*", (req, res) => {
-      res.sendFile(path.join(distPath, "index.html"));
-    });
-  }
-
-  if (process.env.NODE_ENV !== "production") {
     app.listen(PORT, "0.0.0.0", () => {
       console.log(`Server running on http://localhost:${PORT}`);
     });
-  }
+  };
+  setupDev();
 }
-
-startServer();
 
 export default app;
 

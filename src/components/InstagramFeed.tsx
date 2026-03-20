@@ -21,8 +21,13 @@ export const InstagramFeed: React.FC<InstagramFeedProps> = ({ t }) => {
   useEffect(() => {
     const fetchFeed = async () => {
       try {
+        console.log("Fetching social feed...");
         const response = await fetch('/api/social-feed');
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
         const data = await response.json();
+        console.log("Feed data received:", data);
         
         if (data.success) {
           setPosts(data.posts.slice(0, 6));
