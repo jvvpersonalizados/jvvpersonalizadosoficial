@@ -43,9 +43,9 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
 }) => {
   const methods = [
     { id: 'pix', label: 'PIX', icon: Zap, a: '#00ff88' }, 
-    { id: 'whats', label: 'WHATSAPP', icon: MessageSquare, a: '#128c7e' }, 
+    { id: 'card', label: t('CARTÃO', 'CARD'), icon: CreditCard, a: '#00d2ff' }, 
     { id: 'paypal', label: 'PAYPAL', icon: CardIcon, a: '#0070ba' }, 
-    { id: 'btc', label: 'CRIPTO', icon: Bitcoin, a: '#f7931a' }
+    { id: 'btc', label: 'BITCOIN', icon: Bitcoin, a: '#f7931a' }
   ];
 
   return (
