@@ -51,94 +51,60 @@ let cachedFeed: any = null;
 let lastFetchTime = 0;
 const CACHE_DURATION = 1000 * 60 * 60; // 1 hour
 
-// API Route for Instagram Feed
-app.get("/api/instagram", async (req, res) => {
-  const now = Date.now();
-  if (cachedFeed && (now - lastFetchTime < CACHE_DURATION)) {
-    return res.json(cachedFeed);
-  }
-
+// API Route for Social Feed (Pinterest fallback for Instagram)
+app.get("/api/social-feed", async (req, res) => {
   try {
-    const username = "jvvpersonalizados";
-    const url = `https://www.instagram.com/${username}/`;
+    const pinterestUrl = "https://br.pinterest.com/JVVPersonalizadosPinterest/_tpd_social/";
     
-    const response = await axios.get(url, {
+    const response = await axios.get(pinterestUrl, {
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept-Language": "en-US,en;q=0.9",
       },
     });
 
     const $ = cheerio.load(response.data);
-    let userData: any = null;
-    
+    const posts: any[] = [];
+
+    // Pinterest often embeds data in a script tag
     $("script").each((i, el) => {
       const content = $(el).html() || "";
-      if (content.includes("window.__additionalDataLoaded")) {
+      if (content.includes("initialData")) {
         try {
-          const jsonStr = content.split("window.__additionalDataLoaded('feed',")[1].split(");")[0];
-          const data = JSON.parse(jsonStr);
-          userData = data.graphql?.user || data.user;
-        } catch (e) {}
-      }
-      if (!userData && content.includes("window._sharedData =")) {
-        try {
-          const jsonStr = content.split("window._sharedData = ")[1].split("};")[0] + "}";
-          const sharedData = JSON.parse(jsonStr);
-          userData = sharedData.entry_data?.ProfilePage?.[0]?.graphql?.user || sharedData.entry_data?.ProfilePage?.[0]?.user;
+          // This is a simplified extraction, Pinterest structure is complex
+          // We'll try to find image URLs directly in the HTML as a fallback
         } catch (e) {}
       }
     });
 
-    if (!userData) {
-      // Try to find any JSON that looks like user data
-      $("script[type='application/json']").each((i, el) => {
-        try {
-          const content = $(el).html() || "";
-          const json = JSON.parse(content);
-          // Look for user data in various possible paths
-          const possibleUser = json.entry_data?.ProfilePage?.[0]?.graphql?.user || 
-                             json.graphql?.user || 
-                             json.user;
-          if (possibleUser && possibleUser.edge_owner_to_timeline_media) {
-            userData = possibleUser;
-          }
-        } catch (e) {}
-      });
+    // Fallback: Scrape images directly from the page
+    $("img").each((i, el) => {
+      const src = $(el).attr("src");
+      if (src && (src.includes("/236x/") || src.includes("/474x/") || src.includes("/736x/"))) {
+        const highRes = src.replace("/236x/", "/736x/").replace("/474x/", "/736x/");
+        posts.push({
+          id: `pin-${i}`,
+          url: pinterestUrl,
+          image: highRes,
+          thumbnail: src,
+          caption: $(el).attr("alt") || "JVV Personalizados"
+        });
+      }
+    });
+
+    if (posts.length === 0) {
+      throw new Error("No images found on Pinterest board");
     }
 
-    if (!userData || !userData.edge_owner_to_timeline_media) {
-      // If we still don't have it, return fallback but don't cache it for long
-      const fallbackResponse = {
-        success: false,
-        error: "Instagram blocked the request or data format changed.",
-        fallback: [
-          "https://images.unsplash.com/photo-1514228742587-6b1558fcca3d?auto=format&fit=crop&w=600&q=80",
-          "https://images.unsplash.com/photo-1614732484003-ef9881555dc3?auto=format&fit=crop&w=600&q=80",
-          "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=600&q=80",
-          "https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&w=600&q=80",
-          "https://images.unsplash.com/photo-1581092160562-40aa08e78837?auto=format&fit=crop&w=600&q=80",
-          "https://images.unsplash.com/photo-1572119865084-43c285814d63?auto=format&fit=crop&w=600&q=80"
-        ]
-      };
-      return res.json(fallbackResponse);
-    }
-
-    const posts = userData.edge_owner_to_timeline_media.edges.map((edge: any) => ({
-      id: edge.node.id,
-      url: `https://www.instagram.com/p/${edge.node.shortcode}/`,
-      image: edge.node.display_url,
-      thumbnail: edge.node.thumbnail_src,
-      caption: edge.node.edge_media_to_caption?.edges[0]?.node?.text || "",
-    }));
-
-    cachedFeed = { success: true, posts };
-    lastFetchTime = now;
-    res.json(cachedFeed);
+    res.json({ success: true, posts: posts.slice(0, 12) });
   } catch (error: any) {
-    console.error("Instagram fetch error:", error.message);
+    console.error("Pinterest fetch error:", error.message);
     res.status(500).json({ success: false, error: error.message });
   }
+});
+
+// API Route for Instagram Feed (Keeping for compatibility but can redirect to social-feed)
+app.get("/api/instagram", async (req, res) => {
+  res.redirect("/api/social-feed");
 });
 
 // API Route for Catalog Sync

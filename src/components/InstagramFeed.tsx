@@ -21,25 +21,16 @@ export const InstagramFeed: React.FC<InstagramFeedProps> = ({ t }) => {
   useEffect(() => {
     const fetchFeed = async () => {
       try {
-        const response = await fetch('/api/instagram');
+        const response = await fetch('/api/social-feed');
         const data = await response.json();
         
         if (data.success) {
           setPosts(data.posts.slice(0, 6));
-        } else if (data.fallback) {
-          // If blocked, use the fallback images provided by the server
-          setPosts(data.fallback.map((img: string, i: number) => ({
-            id: `fallback-${i}`,
-            url: "https://www.instagram.com/jvvpersonalizados/",
-            image: img,
-            thumbnail: img,
-            caption: "Instagram Post"
-          })));
         } else {
           setError(data.error || "Failed to fetch feed");
         }
       } catch (err: any) {
-        console.error("Error fetching Instagram feed:", err);
+        console.error("Error fetching Social feed:", err);
         setError(err.message);
       } finally {
         setLoading(false);
