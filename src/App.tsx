@@ -10,6 +10,7 @@ import { ProductPage } from './pages/ProductPage';
 import { ReviewsPage } from './pages/ReviewsPage';
 import { CheckoutPage } from './pages/CheckoutPage';
 import { UserPanelPage } from './pages/UserPanelPage';
+import { AdminPortalPage } from './pages/AdminPortalPage';
 import { OrbitalLogo } from './components/OrbitalLogo';
 import { MobileLayout } from './components/MobileLayout';
 import { apiService } from './services/apiService';
@@ -24,6 +25,7 @@ export default function App() {
   const [cart, setCart] = useState<any[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [user, setUser] = useState<any>(null); 
+  const [userOrders, setUserOrders] = useState<any[]>([]);
   const [checkoutData, setCheckoutData] = useState({
     nome: "", telefone: "", email: "", cpf: "", nascimento: "", cep: "", 
     endereco: "", numero: "", detalhes: "", cupom: "", pais: "Brasil"
@@ -42,6 +44,22 @@ export default function App() {
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [addedReviews, setAddedReviews] = useState<any[]>([]);
   const [catalog, setCatalog] = useState<any[]>([]);
+  const [banners, setBanners] = useState<any[]>([]);
+  const [isAdminPortal, setIsAdminPortal] = useState(false);
+
+  useEffect(() => {
+    // 1. Check environment variable (Vercel)
+    // Tentamos ler o nome que você criou e também o padrão com VITE_
+    const mode = (import.meta as any).env.MODO_RAPIDO_DO_APLICATIVO || (import.meta as any).env.VITE_MODO_RAPIDO_DO_APLICATIVO || (import.meta as any).env.VITE_APP_MODE;
+    
+    // 2. Check URL parameter (Fallback/Dev)
+    const params = new URLSearchParams(window.location.search);
+    
+    if (mode === 'admin' || params.get('admin') === 'true') {
+      setIsAdminPortal(true);
+    }
+  }, []);
+
   const [themeColor, setThemeColor] = useState(() => {
     return localStorage.getItem('jvv-theme-color') || '#9333ea';
   });
@@ -79,12 +97,58 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    const fetchBanners = async () => {
+      try {
+        const res = await apiService.getBanners();
+        if (res.success && Array.isArray(res.data)) {
+          setBanners(res.data.filter((b: any) => b.active === 'TRUE'));
+        }
+      } catch (err) {
+        console.error("Erro ao carregar banners:", err);
+      }
+    };
+    fetchBanners();
+  }, []);
+
+  useEffect(() => {
     document.documentElement.style.setProperty('--theme-primary', themeColor);
     localStorage.setItem('jvv-theme-color', themeColor);
   }, [themeColor]);
 
+  useEffect(() => {
+    const fetchUserOrders = async () => {
+      if (user?.email) {
+        try {
+          const res = await apiService.getOrders();
+          if (res.success && Array.isArray(res.data)) {
+            const filtered = res.data.filter((o: any) => o.user === user.email || o.email === user.email);
+            setUserOrders(filtered);
+          }
+        } catch (err) {
+          console.error("Erro ao buscar pedidos do usuário:", err);
+        }
+      } else {
+        setUserOrders([]);
+      }
+    };
+    fetchUserOrders();
+  }, [user]);
+
+  const canUserReviewProduct = (productName: string) => {
+    if (!user) return { can: false, reason: 'login' };
+    // Check if any order contains the product name
+    const hasPurchased = userOrders.some((o: any) => 
+      o.items && o.items.toLowerCase().includes(productName.toLowerCase())
+    );
+    return { can: hasPurchased, reason: hasPurchased ? 'ok' : 'not_purchased' };
+  };
+
   const t = (brText: any, intText: any) => nationality === 'INT' ? intText : brText;
   const formatPrice = (price: number) => nationality === 'INT' ? `$ ${(price * 0.2).toFixed(2)}` : `R$ ${price.toFixed(2).replace('.', ',')}`;
+
+  if (isAdminPortal) {
+    return <AdminPortalPage t={t} formatPrice={formatPrice} />;
+  }
 
   const navigate = (p: string, d: any = null, tag: string = "") => { 
     window.scrollTo(0, 0); 
@@ -250,6 +314,7 @@ export default function App() {
           themeColor={themeColor}
           setThemeColor={setThemeColor}
           catalog={catalog}
+          banners={banners}
           goBack={goBack}
         />
       ) : (
@@ -300,11 +365,11 @@ export default function App() {
           <Header currentPage={currentPage} selectedTag={selectedTag} navigate={navigate} cartCount={cart.length} user={user} t={t} />
           
           <main className="relative z-10 pt-10 md:pt-20">
-            {currentPage === 'home' && <HomePage navigate={navigate} formatPrice={formatPrice} t={t} addToCart={addToCart} products={catalog} />}
+            {currentPage === 'home' && <HomePage navigate={navigate} formatPrice={formatPrice} t={t} addToCart={addToCart} products={catalog} banners={banners} />}
             {currentPage === 'catalog' && <CatalogPage navigate={navigate} selectedTag={selectedTag} formatPrice={formatPrice} t={t} addToCart={addToCart} products={catalog} />}
             {currentPage === 'user' && <UserPanelPage user={user} setUser={setUser} checkoutData={checkoutData} setCheckoutData={setCheckoutData} formatPrice={formatPrice} t={t} openReviewModal={() => setIsReviewModalOpen(true)} />}
-            {currentPage === 'product' && <ProductPage selectedProduct={selectedProduct} navigate={navigate} goBack={goBack} addToCart={addToCart} formatPrice={formatPrice} t={t} openReviewModal={() => setIsReviewModalOpen(true)} addedReviews={addedReviews} />}
-            {currentPage === 'reviews' && <ReviewsPage navigate={navigate} t={t} openReviewModal={() => setIsReviewModalOpen(true)} />}
+            {currentPage === 'product' && <ProductPage selectedProduct={selectedProduct} navigate={navigate} goBack={goBack} addToCart={addToCart} formatPrice={formatPrice} t={t} openReviewModal={() => setIsReviewModalOpen(true)} addedReviews={addedReviews} canReview={canUserReviewProduct} />}
+            {currentPage === 'reviews' && <ReviewsPage navigate={navigate} t={t} openReviewModal={() => setIsReviewModalOpen(true)} user={user} />}
             {currentPage === 'checkout' && 
               <CheckoutPage 
                 cart={cart} 

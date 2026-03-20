@@ -50,13 +50,19 @@ app.post("/api/generate-post", async (req, res) => {
     const postData = JSON.parse(result.text || "{}");
     
     // Sync with GAS
-    const gasUrl = "https://script.google.com/macros/s/AKfycbzDtuQJXDKbFkIjP4sMBKULwgAa90sJajyIPEzU3n5-pFOy9KD6BBLDAztbr4oEXP_IKw/exec";
+    const gasUrl = process.env.GAS_WEBAPP_URL || "https://script.google.com/macros/s/AKfycbzyspcbtaezKhIid7a4TKh4-I6TgLZzhi4LY5f0wpmp5H5LuVQonpj5aPchiMiN63IpVg/exec";
+    const gasToken = process.env.GAS_API_TOKEN || "SEGREDO_GALÁCTICO_2026";
+    
     await axios.post(gasUrl, {
       action: "addProduct",
-      name: postData.name,
-      price: postData.price,
-      image: "https://images.unsplash.com/photo-1517142089942-ba376ce32a2e?w=800&q=80", // Placeholder
-      description: postData.description
+      token: gasToken,
+      product: {
+        name: postData.name,
+        price: postData.price,
+        image: "https://images.unsplash.com/photo-1517142089942-ba376ce32a2e?w=800&q=80", // Placeholder
+        description: postData.description,
+        stock: 10
+      }
     });
 
     res.json({ success: true, data: postData });
@@ -187,9 +193,12 @@ app.get("/api/sync-catalog", async (req, res) => {
     // Deduplicate by name
     const uniqueProducts = Array.from(new Map(products.map(p => [p.name, p])).values());
 
-    const gasUrl = "https://script.google.com/macros/s/AKfycbzDtuQJXDKbFkIjP4sMBKULwgAa90sJajyIPEzU3n5-pFOy9KD6BBLDAztbr4oEXP_IKw/exec";
+    const gasUrl = process.env.GAS_WEBAPP_URL || "https://script.google.com/macros/s/AKfycbzyspcbtaezKhIid7a4TKh4-I6TgLZzhi4LY5f0wpmp5H5LuVQonpj5aPchiMiN63IpVg/exec";
+    const gasToken = process.env.GAS_API_TOKEN || "SEGREDO_GALÁCTICO_2026";
+    
     await axios.post(gasUrl, {
       action: "syncCatalog",
+      token: gasToken,
       products: uniqueProducts.filter(p => p.name && p.price)
     });
 
@@ -203,12 +212,17 @@ app.get("/api/sync-catalog", async (req, res) => {
 // Proxy for Google Apps Script to avoid CORS issues
 app.post("/api/gas-proxy", async (req, res) => {
   try {
-    const gasUrl = "https://script.google.com/macros/s/AKfycbzDtuQJXDKbFkIjP4sMBKULwgAa90sJajyIPEzU3n5-pFOy9KD6BBLDAztbr4oEXP_IKw/exec";
-    const response = await axios.post(gasUrl, req.body, {
+    const gasUrl = process.env.GAS_WEBAPP_URL || "https://script.google.com/macros/s/AKfycbzyspcbtaezKhIid7a4TKh4-I6TgLZzhi4LY5f0wpmp5H5LuVQonpj5aPchiMiN63IpVg/exec";
+    const gasToken = process.env.GAS_API_TOKEN || "SEGREDO_GALÁCTICO_2026";
+    
+    // Injetar o token de segurança no corpo da requisição
+    const bodyWithToken = { ...req.body, token: gasToken };
+    
+    const response = await axios.post(gasUrl, bodyWithToken, {
       headers: {
         "Content-Type": "application/json",
       },
-      timeout: 10000
+      timeout: 15000
     });
     res.json(response.data);
   } catch (error: any) {

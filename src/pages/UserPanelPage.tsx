@@ -26,6 +26,7 @@ export const UserPanelPage: React.FC<UserPanelPageProps> = ({ user, setUser, che
   const [adminOrders, setAdminOrders] = useState<any[]>([]);
   const [adminUsers, setAdminUsers] = useState<any[]>([]);
   const [adminProducts, setAdminProducts] = useState<any[]>([]);
+  const [adminBanners, setAdminBanners] = useState<any[]>([]);
   const [adminStats, setAdminStats] = useState<any>(null);
   const [promptIA, setPromptIA] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -100,29 +101,36 @@ export const UserPanelPage: React.FC<UserPanelPageProps> = ({ user, setUser, che
     { id: 'dashboard', n: t('Dashboard', 'Dashboard'), i: Layout },
     { id: 'orders', n: t('Pedidos', 'Orders'), i: Package },
     { id: 'settings', n: t('Perfil', 'Profile'), i: Settings },
-    ...(user?.email === 'vitor.trindadeit@gmail.com' || user?.email === 'jvvpersonalizados@gmail.com' ? [{ id: 'admin', n: t('ADMIN', 'ADMIN'), i: ShieldIcon }] : []),
     { id: 'logout', n: t('Sair', 'Logout'), i: LogOut }
   ];
 
   const fetchAdminData = async () => {
     setIsLoading(true);
     try {
-      const [ordersRes, usersRes, statsRes, catalogRes] = await Promise.all([
+      const [ordersRes, usersRes, statsRes, catalogRes, bannersRes] = await Promise.all([
         apiService.getOrders(),
         apiService.getUsers(),
         apiService.getAdminStats(),
-        apiService.getCatalog()
+        apiService.getCatalog(),
+        apiService.getBanners()
       ]);
       if (ordersRes.success) setAdminOrders(ordersRes.data);
       if (usersRes.success) setAdminUsers(usersRes.data);
       if (statsRes.success) setAdminStats(statsRes.data);
       if (catalogRes.success) setAdminProducts(catalogRes.data);
+      if (bannersRes.success) setAdminBanners(bannersRes.data);
     } catch (err) {
       console.error("Error fetching admin data:", err);
     } finally {
       setIsLoading(false);
     }
   };
+
+  React.useEffect(() => {
+    if (activeTab === 'admin') {
+      fetchAdminData();
+    }
+  }, [activeTab]);
 
   const handleUpdateStatus = async (orderId: string, status: string) => {
     const res = await apiService.updateOrderStatus(orderId, status);
@@ -185,6 +193,55 @@ export const UserPanelPage: React.FC<UserPanelPageProps> = ({ user, setUser, che
     } finally {
       setIsAddingProduct(false);
     }
+  };
+
+  const handleDeleteProduct = async (productId: string) => {
+    if (!confirm(t("Tem certeza que deseja excluir este produto?", "Are you sure you want to delete this product?"))) return;
+    const res = await apiService.deleteProduct(productId);
+    if (res.success) fetchAdminData();
+    else alert(res.message);
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    if (!confirm(t("Tem certeza que deseja excluir este usuário?", "Are you sure you want to delete this user?"))) return;
+    const res = await apiService.deleteUser(userId);
+    if (res.success) fetchAdminData();
+    else alert(res.message);
+  };
+
+  const [newBanner, setNewBanner] = useState({ title: '', subtitle: '', image: '', link: '', active: 'TRUE', order: '0' });
+  const [isAddingBanner, setIsAddingBanner] = useState(false);
+
+  const handleAddBanner = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsAddingBanner(true);
+    try {
+      const res = await apiService.addBanner(newBanner);
+      if (res.success) {
+        alert(t("Banner adicionado com sucesso!", "Banner added successfully!"));
+        setNewBanner({ title: '', subtitle: '', image: '', link: '', active: 'TRUE', order: '0' });
+        fetchAdminData();
+      } else {
+        alert(res.message);
+      }
+    } catch (err) {
+      alert(t("Erro ao conectar com o servidor.", "Error connecting to server."));
+    } finally {
+      setIsAddingBanner(false);
+    }
+  };
+
+  const handleDeleteBanner = async (bannerId: string) => {
+    if (!confirm(t("Tem certeza que deseja excluir este banner?", "Are you sure you want to delete this banner?"))) return;
+    const res = await apiService.deleteBanner(bannerId);
+    if (res.success) fetchAdminData();
+    else alert(res.message);
+  };
+
+  const handleToggleBanner = async (banner: any) => {
+    const newStatus = banner.active === 'TRUE' ? 'FALSE' : 'TRUE';
+    const res = await apiService.updateBanner(banner.id, { active: newStatus });
+    if (res.success) fetchAdminData();
   };
 
   const ordersList = [
@@ -360,150 +417,6 @@ export const UserPanelPage: React.FC<UserPanelPageProps> = ({ user, setUser, che
         </aside>
 
         <div className="lg:col-span-3 min-h-[400px] md:min-h-[500px]">
-          {activeTab === 'admin' && (user?.email === 'vitor.trindadeit@gmail.com' || user?.email === 'jvvpersonalizados@gmail.com') && (
-            <div className="space-y-8 animate-fade">
-              <header className="flex justify-between items-center mb-8">
-                <h1 className="text-2xl font-black italic text-green-400 border-l-4 border-green-500 pl-4 uppercase tracking-tighter">PAINEL MASTER ADM</h1>
-                <div className="flex gap-4">
-                  <button 
-                    onClick={handleSyncCatalog}
-                    disabled={isLoading}
-                    className="flex items-center gap-2 text-[10px] bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded-full text-white font-black uppercase tracking-widest transition-all shadow-lg disabled:opacity-50"
-                  >
-                    <RefreshCw size={14} className={isLoading ? "animate-spin" : ""} />
-                    {isLoading ? t("SINCRONIZANDO...", "SYNCING...") : t("SINCRONIZAR SITE", "SYNC SITE")}
-                  </button>
-                  <span className="text-[10px] bg-zinc-800 px-3 py-1 rounded-full text-zinc-400 font-bold">V59.0</span>
-                </div>
-              </header>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="bg-zinc-900 p-8 rounded-[40px] border border-white/5 shadow-2xl">
-                  <h3 className="text-lg font-black italic uppercase mb-6 text-white">{t('Adicionar Produto Manual', 'Manual Add Product')}</h3>
-                  <form onSubmit={handleAddProduct} className="space-y-4">
-                    <input 
-                      required
-                      value={newProduct.name}
-                      onChange={e => setNewProduct({...newProduct, name: e.target.value})}
-                      placeholder={t('NOME DO PRODUTO', 'PRODUCT NAME')} 
-                      className="w-full p-4 bg-zinc-800 rounded-xl border-none outline-none focus:ring-1 ring-blue-500 text-xs text-white"
-                    />
-                    <input 
-                      required
-                      value={newProduct.price}
-                      onChange={e => setNewProduct({...newProduct, price: e.target.value})}
-                      placeholder={t('PREÇO (Ex: 89.90)', 'PRICE (Ex: 89.90)')} 
-                      className="w-full p-4 bg-zinc-800 rounded-xl border-none outline-none focus:ring-1 ring-blue-500 text-xs text-white"
-                    />
-                    <input 
-                      value={newProduct.image}
-                      onChange={e => setNewProduct({...newProduct, image: e.target.value})}
-                      placeholder={t('URL DA IMAGEM', 'IMAGE URL')} 
-                      className="w-full p-4 bg-zinc-800 rounded-xl border-none outline-none focus:ring-1 ring-blue-500 text-xs text-white"
-                    />
-                    <textarea 
-                      value={newProduct.description}
-                      onChange={e => setNewProduct({...newProduct, description: e.target.value})}
-                      placeholder={t('DESCRIÇÃO', 'DESCRIPTION')} 
-                      className="w-full h-24 p-4 bg-zinc-800 rounded-xl border-none outline-none focus:ring-1 ring-blue-500 text-xs text-white resize-none"
-                    ></textarea>
-                    <button 
-                      type="submit"
-                      disabled={isAddingProduct}
-                      className="w-full py-4 bg-blue-500 text-white font-black rounded-xl hover:bg-blue-400 transition uppercase tracking-widest text-[10px] shadow-lg disabled:opacity-50"
-                    >
-                      {isAddingProduct ? t('ADICIONANDO...', 'ADDING...') : t('ADICIONAR AO CATÁLOGO', 'ADD TO CATALOG')}
-                    </button>
-                  </form>
-                </div>
-
-                <div className="bg-zinc-900 p-8 rounded-[40px] border border-white/5 shadow-2xl">
-                  <h3 className="text-lg font-black italic uppercase mb-6 text-white">{t('Nova Postagem IA', 'New AI Post')}</h3>
-                  <textarea 
-                    value={promptIA}
-                    onChange={e => setPromptIA(e.target.value)}
-                    placeholder={t('Descreva o produto (Ex: Camiseta preta personalizada com logo dourada)...', 'Describe the product (Ex: Black t-shirt customized with gold logo)...')} 
-                    className="w-full h-32 p-5 bg-zinc-800 rounded-2xl border-none outline-none focus:ring-2 ring-green-500 mb-6 text-sm font-medium text-white resize-none"
-                  ></textarea>
-                  <button 
-                    onClick={handleGeneratePost}
-                    disabled={isGenerating}
-                    className="w-full py-5 bg-green-500 text-black font-black rounded-2xl hover:bg-green-400 transition uppercase tracking-widest text-xs shadow-lg disabled:opacity-50"
-                  >
-                    {isGenerating ? t('GERANDO...', 'GENERATING...') : t('GERAR E PUBLICAR NO SITE', 'GENERATE AND PUBLISH ON SITE')}
-                  </button>
-                </div>
-
-                <div className="bg-zinc-900 p-8 rounded-[40px] border border-white/5 shadow-2xl">
-                  <h3 className="text-lg font-black italic uppercase mb-6 text-white">{t('Monitor do Banco de Dados', 'Database Monitor')}</h3>
-                  <div className="space-y-4">
-                    <div className="flex justify-between text-xs font-bold uppercase tracking-widest text-zinc-400">
-                      <span>{t('Clientes Ativos:', 'Active Clients:')}</span> 
-                      <span className="text-white">{adminUsers.length || '...'}</span>
-                    </div>
-                    <div className="flex justify-between text-xs font-bold uppercase tracking-widest text-zinc-400">
-                      <span>{t('Pedidos Pendentes:', 'Pending Orders:')}</span> 
-                      <span className="text-white">{adminOrders.filter(o => o.status !== 'Entregue').length || '...'}</span>
-                    </div>
-                    <div className="flex justify-between text-xs font-bold uppercase tracking-widest text-zinc-400">
-                      <span>{t('Produtos em Linha:', 'Products Online:')}</span> 
-                      <span className="text-white">{adminProducts.length || '...'}</span>
-                    </div>
-                    <button 
-                      onClick={fetchAdminData}
-                      className="w-full mt-6 py-3 bg-white/5 border border-white/10 text-white font-black rounded-xl text-[10px] uppercase tracking-widest hover:bg-white/10 transition"
-                    >
-                      {t('ATUALIZAR DADOS', 'REFRESH DATA')}
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-zinc-900 p-8 rounded-[40px] border border-white/5 shadow-2xl overflow-hidden">
-                <h3 className="text-lg font-black italic uppercase mb-8 text-white">{t('Administração de Pedidos', 'Orders Administration')}</h3>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="border-b border-white/5 text-[10px] font-black uppercase tracking-widest text-zinc-500">
-                        <th className="pb-4 px-4">ID</th>
-                        <th className="pb-4 px-4">{t('Cliente', 'Client')}</th>
-                        <th className="pb-4 px-4">{t('Valor', 'Value')}</th>
-                        <th className="pb-4 px-4">{t('Status', 'Status')}</th>
-                        <th className="pb-4 px-4">{t('Ações', 'Actions')}</th>
-                      </tr>
-                    </thead>
-                    <tbody className="text-xs font-bold">
-                      {adminOrders.map(order => (
-                        <tr key={order.id} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
-                          <td className="py-4 px-4 text-zinc-400">#{order.id}</td>
-                          <td className="py-4 px-4">{order.user || order.email}</td>
-                          <td className="py-4 px-4 text-green-400">{formatPrice(order.total || 0)}</td>
-                          <td className="py-4 px-4">
-                            <span className={`px-3 py-1 rounded-full text-[8px] uppercase tracking-widest ${order.status === 'Entregue' ? 'bg-green-500/10 text-green-400' : 'bg-blue-500/10 text-blue-400'}`}>
-                              {order.status}
-                            </span>
-                          </td>
-                          <td className="py-4 px-4">
-                            <select 
-                              onChange={(e) => handleUpdateStatus(order.id, e.target.value)}
-                              value={order.status}
-                              className="bg-zinc-800 border-none rounded-lg text-[9px] uppercase font-black px-2 py-1 outline-none focus:ring-1 ring-green-500"
-                            >
-                              <option value="Pendente">{t('Pendente', 'Pending')}</option>
-                              <option value="Em Produção">{t('Em Produção', 'In Production')}</option>
-                              <option value="Enviado">{t('Enviado', 'Shipped')}</option>
-                              <option value="Entregue">{t('Entregue', 'Delivered')}</option>
-                            </select>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          )}
-
           {activeTab === 'orders' && (
             <div className="bg-white/[0.02] border border-white/10 p-6 md:p-16 rounded-[40px] md:rounded-[60px] shadow-3xl animate-fade h-full">
               <h2 className="text-2xl md:text-3xl font-black italic uppercase mb-8 md:mb-12 tracking-tighter text-center md:text-left">{t('Meus', 'My')} <span className="text-[var(--theme-primary)]">{t('Pedidos', 'Orders')}</span></h2>

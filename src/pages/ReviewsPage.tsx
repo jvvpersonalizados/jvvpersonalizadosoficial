@@ -6,9 +6,19 @@ interface ReviewsPageProps {
   navigate: (page: string) => void;
   t: (br: any, int: any) => any;
   openReviewModal: () => void;
+  user: any;
 }
 
-export const ReviewsPage: React.FC<ReviewsPageProps> = ({ navigate, t, openReviewModal }) => {
+export const ReviewsPage: React.FC<ReviewsPageProps> = ({ navigate, t, openReviewModal, user }) => {
+  const handleOpenReview = () => {
+    if (!user) {
+      alert(t("Você precisa entrar na sua conta para deixar uma avaliação.", "You need to log in to your account to leave a review."));
+      navigate('user');
+    } else {
+      openReviewModal();
+    }
+  };
+
   return (
     <div className="container mx-auto py-12 md:py-20 animate-fade font-jakarta overflow-hidden">
       <div className="text-center mb-10 md:mb-12 px-4 md:px-6">
@@ -24,7 +34,7 @@ export const ReviewsPage: React.FC<ReviewsPageProps> = ({ navigate, t, openRevie
           <div className="text-slate-400 font-bold uppercase tracking-widest text-[10px] md:text-xs">
             111+ {t('AVALIAÇÕES REAIS', 'REAL REVIEWS')}
           </div>
-          <button onClick={openReviewModal} className="w-full md:w-auto bg-[var(--theme-primary)] text-white px-8 py-4 md:py-3 rounded-full text-[10px] font-black uppercase tracking-widest hover:opacity-90 transition-all shadow-[0_0_20px_rgba(var(--theme-primary),0.3)]">
+          <button onClick={handleOpenReview} className="w-full md:w-auto bg-[var(--theme-primary)] text-white px-8 py-4 md:py-3 rounded-full text-[10px] font-black uppercase tracking-widest hover:opacity-90 transition-all shadow-[0_0_20px_rgba(var(--theme-primary),0.3)]">
             {t('DEIXAR AVALIAÇÃO', 'LEAVE A REVIEW')}
           </button>
         </div>

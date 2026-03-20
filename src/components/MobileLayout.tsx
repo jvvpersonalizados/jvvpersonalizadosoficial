@@ -41,6 +41,7 @@ interface MobileLayoutProps {
   themeColor: string;
   setThemeColor: (c: string) => void;
   catalog?: Product[];
+  banners?: any[];
   goBack: () => void;
 }
 
@@ -76,6 +77,7 @@ export const MobileLayout: React.FC<MobileLayoutProps> = ({
   themeColor,
   setThemeColor,
   catalog: externalProducts,
+  banners = [],
   goBack
 }) => {
   const [isSearchViewOpen, setIsSearchViewOpen] = useState(false);
@@ -237,7 +239,7 @@ export const MobileLayout: React.FC<MobileLayoutProps> = ({
       {/* CONTENT */}
       <div ref={contentRef} className="flex-1 overflow-y-auto scrollbar-hide">
         {currentPage === 'home' && (
-          <HomePage navigate={navigate} formatPrice={formatPrice} t={t} addToCart={addToCart} />
+          <HomePage navigate={navigate} formatPrice={formatPrice} t={t} addToCart={addToCart} banners={banners} />
         )}
 
         {currentPage === 'checkout' && (

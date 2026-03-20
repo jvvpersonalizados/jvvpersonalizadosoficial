@@ -11,20 +11,72 @@ interface HomePageProps {
   t: (br: any, int: any) => any;
   addToCart: (p: any, q?: number) => void;
   products?: Product[];
+  banners?: any[];
 }
 
-export const HomePage: React.FC<HomePageProps> = ({ navigate, formatPrice, t, addToCart, products: externalProducts }) => {
+export const HomePage: React.FC<HomePageProps> = ({ navigate, formatPrice, t, addToCart, products: externalProducts, banners = [] }) => {
   const localProducts = getProducts(t);
   const products = externalProducts && externalProducts.length > 0 ? externalProducts : localProducts;
+
+  const [currentBannerIndex, setCurrentBannerIndex] = React.useState(0);
+
+  React.useEffect(() => {
+    if (banners.length > 1) {
+      const interval = setInterval(() => {
+        setCurrentBannerIndex(prev => (prev + 1) % banners.length);
+      }, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [banners.length]);
+
+  const activeBanner = banners.length > 0 ? banners[currentBannerIndex] : {
+    title: t('Brindes com muito amor!', 'Gifts with lots of love!'),
+    subtitle: '',
+    image: "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg7O7Wa-Q6zB6Ki28YBNTOEGN1lhhJElAdYmFXXUlR8WHFkpX8GPFkOhPSdWeG7pEqQhWwb_y4xhf8TnnZWIcB_AMWQCTUF2IPPvk4hK_F-3AxZHi-Msg7oR6b568RKXx3UNQ1J0sl5q64-U3FmiHQm7YTexxArRss4nDfvccNqA00068bUqXT3RXzWTHCK/w640-h350/587093937_1338104444996406_8449863344709963969_n.jpg",
+    link: 'catalog'
+  };
+
   return (
     <div className="animate-fade font-jakarta">
       <section className="container mx-auto px-4 md:px-6 mb-16 md:mb-24">
-        <div className="relative w-full h-[300px] md:h-[400px] overflow-hidden rounded-[30px] md:rounded-[40px] border border-white/5 bg-white/[0.02] shadow-3xl flex items-center justify-center text-center">
-          <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEg7O7Wa-Q6zB6Ki28YBNTOEGN1lhhJElAdYmFXXUlR8WHFkpX8GPFkOhPSdWeG7pEqQhWwb_y4xhf8TnnZWIcB_AMWQCTUF2IPPvk4hK_F-3AxZHi-Msg7oR6b568RKXx3UNQ1J0sl5q64-U3FmiHQm7YTexxArRss4nDfvccNqA00068bUqXT3RXzWTHCK/w640-h350/587093937_1338104444996406_8449863344709963969_n.jpg" alt="" className="absolute inset-0 w-full h-full object-cover opacity-25" referrerPolicy="no-referrer" />
-          <div className="relative z-10 p-6 md:p-8">
-            <h2 className="text-4xl md:text-6xl font-black italic uppercase leading-none mb-6 md:mb-8 tracking-tighter text-white px-2">{t('Brindes com muito amor!', 'Gifts with lots of love!')}</h2>
-            <button onClick={() => navigate('catalog')} className="bg-white text-black font-black uppercase italic px-8 py-4 md:px-12 md:py-5 rounded-full text-[10px] md:text-xs hover:bg-[var(--theme-primary)] hover:text-white transition-all shadow-2xl tracking-[0.2em]">{t('Explorar Coleção', 'Explore Collection')}</button>
+        <div className="relative w-full h-[300px] md:h-[400px] overflow-hidden rounded-[30px] md:rounded-[40px] border border-white/5 bg-white/[0.02] shadow-3xl flex items-center justify-center text-center group">
+          <img 
+            key={activeBanner.image}
+            src={activeBanner.image} 
+            alt="" 
+            className="absolute inset-0 w-full h-full object-cover opacity-40 animate-fade" 
+            referrerPolicy="no-referrer" 
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+          
+          <div className="relative z-10 p-6 md:p-8 max-w-2xl">
+            <h2 className="text-4xl md:text-6xl font-black italic uppercase leading-none mb-4 md:mb-6 tracking-tighter text-white px-2 drop-shadow-2xl">
+              {activeBanner.title}
+            </h2>
+            {activeBanner.subtitle && (
+              <p className="text-xs md:text-sm font-bold uppercase tracking-[0.3em] text-white/80 mb-8 drop-shadow-lg">
+                {activeBanner.subtitle}
+              </p>
+            )}
+            <button 
+              onClick={() => activeBanner.link ? (activeBanner.link.startsWith('http') ? window.open(activeBanner.link) : navigate(activeBanner.link)) : navigate('catalog')} 
+              className="bg-white text-black font-black uppercase italic px-8 py-4 md:px-12 md:py-5 rounded-full text-[10px] md:text-xs hover:bg-[var(--theme-primary)] hover:text-white transition-all shadow-2xl tracking-[0.2em]"
+            >
+              {t('Explorar Agora', 'Explore Now')}
+            </button>
           </div>
+
+          {banners.length > 1 && (
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 z-20">
+              {banners.map((_, idx) => (
+                <button 
+                  key={idx}
+                  onClick={() => setCurrentBannerIndex(idx)}
+                  className={`w-2 h-2 rounded-full transition-all ${idx === currentBannerIndex ? 'bg-white w-6' : 'bg-white/30'}`}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </section>
       

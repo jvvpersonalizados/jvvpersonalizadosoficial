@@ -13,9 +13,10 @@ interface ProductPageProps {
   t: (br: any, int: any) => any;
   openReviewModal: () => void;
   addedReviews: Review[];
+  canReview: (productName: string) => { can: boolean; reason: string };
 }
 
-export const ProductPage: React.FC<ProductPageProps> = ({ selectedProduct, navigate, goBack, addToCart, formatPrice, t, openReviewModal, addedReviews }) => {
+export const ProductPage: React.FC<ProductPageProps> = ({ selectedProduct, navigate, goBack, addToCart, formatPrice, t, openReviewModal, addedReviews, canReview }) => {
   const [quantity, setQuantity] = useState(1);
   const [selectedSize, setSelectedSize] = useState<string>('');
   const [zoom, setZoom] = useState({ x: 0, y: 0, active: false });
@@ -66,6 +67,20 @@ export const ProductPage: React.FC<ProductPageProps> = ({ selectedProduct, navig
     }
     addToCart(product, quantity, selectedSize);
     navigate('checkout');
+  };
+
+  const handleOpenReview = () => {
+    const check = canReview(product.name);
+    if (check.can) {
+      openReviewModal();
+    } else {
+      if (check.reason === 'login') {
+        alert(t("Você precisa entrar na sua conta para avaliar este produto.", "You need to log in to your account to review this product."));
+        navigate('user');
+      } else {
+        alert(t("Apenas clientes que compraram este produto podem avaliá-lo.", "Only customers who bought this product can review it."));
+      }
+    }
   };
 
   return (
@@ -177,13 +192,18 @@ export const ProductPage: React.FC<ProductPageProps> = ({ selectedProduct, navig
         <div className="flex flex-col justify-between items-center md:items-end mb-10 md:mb-16 gap-6 md:flex-row text-center md:text-left">
           <div className="space-y-3 md:space-y-4">
             <h2 className="text-3xl md:text-4xl font-black italic uppercase tracking-tighter text-white">{t('Avaliações do', 'Reviews for')} <span className="text-[var(--theme-primary)]">{t('Produto', 'Product')}</span></h2>
-            <div className="flex items-center justify-center md:justify-start gap-3">
+            <div className="flex items-center justify-center md:justify-start gap-3 flex-wrap">
               <span className="text-2xl md:text-3xl font-black text-white">{averageRating}</span>
               <div className="flex text-yellow-400"><Star size={16} className="md:w-5 md:h-5" fill="currentColor" /><Star size={16} className="md:w-5 md:h-5" fill="currentColor" /><Star size={16} className="md:w-5 md:h-5" fill="currentColor" /><Star size={16} className="md:w-5 md:h-5" fill="currentColor" /><Star size={16} className="md:w-5 md:h-5" fill="currentColor" /></div>
               <span className="text-[9px] md:text-[10px] text-slate-500 font-bold uppercase tracking-widest">{t(`Baseado em ${productReviews.length + 46} avaliações`, `Based on ${productReviews.length + 46} reviews`)}</span>
+              {canReview(product.name).can && (
+                <span className="px-2 py-0.5 bg-green-500/10 text-green-400 text-[8px] font-black uppercase tracking-widest rounded-full border border-green-500/20 flex items-center gap-1">
+                  <CheckCircle size={10} /> {t('Compra Verificada', 'Verified Purchase')}
+                </span>
+              )}
             </div>
           </div>
-          <button onClick={openReviewModal} className="w-full md:w-auto bg-[var(--theme-primary)] text-white px-8 py-4 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-[var(--theme-primary)]/80 transition-all shadow-[0_0_20px_rgba(var(--theme-primary),0.3)]">
+          <button onClick={handleOpenReview} className="w-full md:w-auto bg-[var(--theme-primary)] text-white px-8 py-4 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-[var(--theme-primary)]/80 transition-all shadow-[0_0_20px_rgba(var(--theme-primary),0.3)]">
             {t('ESCREVER AVALIAÇÃO', 'WRITE A REVIEW')}
           </button>
         </div>

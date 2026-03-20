@@ -93,6 +93,30 @@ export const apiService = {
     return this.post("getUsers", {});
   },
 
+  async deleteUser(userId: string) {
+    return this.post("deleteUser", { userId });
+  },
+
+  async deleteProduct(productId: string) {
+    return this.post("deleteProduct", { productId });
+  },
+
+  async getBanners() {
+    return this.post("getBanners", {});
+  },
+
+  async addBanner(banner: any) {
+    return this.post("addBanner", banner);
+  },
+
+  async updateBanner(bannerId: string, data: any) {
+    return this.post("updateBanner", { bannerId, ...data });
+  },
+
+  async deleteBanner(bannerId: string) {
+    return this.post("deleteBanner", { bannerId });
+  },
+
   async forgotPassword(email: string) {
     return this.post("forgotPassword", { email });
   }
