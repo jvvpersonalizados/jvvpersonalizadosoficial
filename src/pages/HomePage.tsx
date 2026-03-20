@@ -30,21 +30,6 @@ export const HomePage: React.FC<HomePageProps> = ({ navigate, formatPrice, t, ad
       
       <InstagramFeed t={t} />
 
-      <section className="pt-8 md:pt-10 border-t border-white/5">
-        <div className="container mx-auto px-4 md:px-6">
-          <div className="flex flex-col md:flex-row justify-between items-center md:items-end mb-6 md:mb-8 gap-6 text-center md:text-left">
-            <div className="space-y-2 md:space-y-4">
-              <h2 className="text-2xl md:text-3xl font-black italic uppercase tracking-tighter text-white">{t('Experiência dos', 'Experience of')} <span className="text-[var(--theme-primary)]">{t('Exploradores', 'Explorers')}</span></h2>
-              <p className="text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-slate-500">{t('O que os clientes falam da JVV Personalizados', 'What customers say about JVV Personalizados')}</p>
-            </div>
-            <button onClick={() => navigate('reviews')} className="w-full md:w-auto bg-white/5 border border-white/10 px-8 py-3.5 md:py-4 rounded-full text-[10px] font-black uppercase tracking-widest text-white hover:bg-[var(--theme-primary)] transition-all">
-              {t('VER TODAS AVALIAÇÕES', 'SEE ALL REVIEWS')}
-            </button>
-          </div>
-        </div>
-        <GoogleReviewsMarquee t={t} />
-      </section>
-      
       <section className="container mx-auto px-4 md:px-6 py-12 md:py-20">
         <h2 className="text-3xl md:text-4xl font-black italic uppercase mb-10 md:mb-16 tracking-tighter text-white text-center md:text-left">{t('Radar', 'Galactic')} <span className="text-[var(--theme-primary)]">{t('Galáctico', 'Radar')}</span></h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-10">
@@ -59,6 +44,21 @@ export const HomePage: React.FC<HomePageProps> = ({ navigate, formatPrice, t, ad
             </div>
           ))}
         </div>
+      </section>
+
+      <section className="pt-8 md:pt-10 border-t border-white/5 pb-12 md:pb-20">
+        <div className="container mx-auto px-4 md:px-6">
+          <div className="flex flex-col md:flex-row justify-between items-center md:items-end mb-6 md:mb-8 gap-6 text-center md:text-left">
+            <div className="space-y-2 md:space-y-4">
+              <h2 className="text-2xl md:text-3xl font-black italic uppercase tracking-tighter text-white">{t('Experiência dos', 'Experience of')} <span className="text-[var(--theme-primary)]">{t('Exploradores', 'Explorers')}</span></h2>
+              <p className="text-[9px] md:text-[10px] font-bold uppercase tracking-widest text-slate-500">{t('O que os clientes falam da JVV Personalizados', 'What customers say about JVV Personalizados')}</p>
+            </div>
+            <button onClick={() => navigate('reviews')} className="w-full md:w-auto bg-white/5 border border-white/10 px-8 py-3.5 md:py-4 rounded-full text-[10px] font-black uppercase tracking-widest text-white hover:bg-[var(--theme-primary)] transition-all">
+              {t('VER TODAS AVALIAÇÕES', 'SEE ALL REVIEWS')}
+            </button>
+          </div>
+        </div>
+        <GoogleReviewsMarquee t={t} />
       </section>
     </div>
   );
