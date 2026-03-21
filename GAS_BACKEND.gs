@@ -257,8 +257,21 @@ function calculateShipping(cep) {
 }
 
 function logAction(ss, action, user, status, details) {
+  // Filtro de ruído: Não logar ações de leitura frequentes se tiverem sucesso para poupar espaço
+  const noisyActions = ['getCatalog', 'getBanners', 'getSavedCart', 'getFavorites', 'getUserOrders', 'getUser', 'searchCatalog', 'calculateShipping'];
+  if (noisyActions.indexOf(action) !== -1 && status === "Success") return;
+
   const sheet = ss.getSheetByName('Logs');
-  if (sheet) sheet.appendRow([new Date(), action, user, status, details]);
+  if (sheet) {
+    sheet.appendRow([new Date(), action, user, status, details]);
+    
+    // Controle de tamanho: Mantém no máximo 1000 logs para não encher a planilha
+    const lastRow = sheet.getLastRow();
+    if (lastRow > 1000) {
+      // Remove as 300 linhas mais antigas (preservando o cabeçalho na linha 1)
+      sheet.deleteRows(2, 300);
+    }
+  }
 }
 
 function response(obj) {

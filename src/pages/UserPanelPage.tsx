@@ -201,7 +201,10 @@ export const UserPanelPage: React.FC<UserPanelPageProps> = ({
         setShowSaveMsg(true);
         setTimeout(() => setShowSaveMsg(false), 3000);
         // Update local user state if name changed
-        setUser({ ...user, name: checkoutData.nome });
+        setUser((prev: any) => {
+          if (!prev) return prev;
+          return { ...prev, name: checkoutData.nome };
+        });
       } else {
         setError(res.message);
       }
@@ -344,10 +347,14 @@ export const UserPanelPage: React.FC<UserPanelPageProps> = ({
 
   const fetchUserData = async () => {
     if (!user?.email) return;
+    const currentEmail = user.email;
     try {
-      const res = await apiService.getUser(user.email);
+      const res = await apiService.getUser(currentEmail);
       if (res.success && res.data) {
-        setUser({ ...user, ...res.data });
+        setUser((prev: any) => {
+          if (!prev || prev.email !== currentEmail) return prev;
+          return { ...prev, ...res.data };
+        });
       }
     } catch (err) {
       console.error("Error fetching user data:", err);
