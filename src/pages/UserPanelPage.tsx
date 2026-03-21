@@ -983,7 +983,10 @@ export const UserPanelPage: React.FC<UserPanelPageProps> = ({
                       ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           {folderItems.map(fav => {
-                            const product = catalog.find(p => String(p.id) === String(fav.productId));
+                            const product = catalog.find(p => 
+                              (p.id && String(p.id).trim() === String(fav.productId).trim()) || 
+                              (p.name && String(p.name).trim().toLowerCase() === String(fav.productId).trim().toLowerCase())
+                            );
                             if (!product) return null;
                             return (
                               <div key={fav.productId} className="bg-white/5 border border-white/5 p-6 rounded-[30px] flex gap-6 items-center group hover:bg-white/[0.08] transition-all">
