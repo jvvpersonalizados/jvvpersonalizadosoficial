@@ -112,7 +112,13 @@ export const UserPanelPage: React.FC<UserPanelPageProps> = ({ user, setUser, che
     try {
       const res = await apiService.register({ name: regName, email: regEmail, pass: regPass });
       if (res.success) {
-        setUser({ name: regName, email: regEmail });
+        setUser({ 
+          name: regName, 
+          email: regEmail, 
+          role: 'User', 
+          thermometer: 'Morno', 
+          score: 'Bronze' 
+        });
       } else {
         setError(res.message || t('Erro ao criar conta.', 'Error creating account.'));
       }
@@ -148,6 +154,7 @@ export const UserPanelPage: React.FC<UserPanelPageProps> = ({ user, setUser, che
     { id: 'dashboard', n: t('Dashboard', 'Dashboard'), i: Layout },
     { id: 'orders', n: t('Pedidos', 'Orders'), i: Package },
     { id: 'settings', n: t('Perfil', 'Profile'), i: Settings },
+    ...(user?.role === 'Admin' ? [{ id: 'admin', n: t('Admin', 'Admin'), i: ShieldIcon }] : []),
     { id: 'logout', n: t('Sair', 'Logout'), i: LogOut }
   ];
 

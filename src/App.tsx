@@ -24,7 +24,23 @@ export default function App() {
   const [selectedTag, setSelectedTag] = useState('Todos');
   const [cart, setCart] = useState<any[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
-  const [user, setUser] = useState<any>(null); 
+  const [user, setUser] = useState<any>(() => {
+    const saved = localStorage.getItem('jvv-user');
+    try {
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) {
+      return null;
+    }
+  });
+
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem('jvv-user', JSON.stringify(user));
+    } else {
+      localStorage.removeItem('jvv-user');
+    }
+  }, [user]);
+
   const [userOrders, setUserOrders] = useState<any[]>([]);
   const [checkoutData, setCheckoutData] = useState({
     nome: "", telefone: "", email: "", cpf: "", nascimento: "", cep: "", 
