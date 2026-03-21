@@ -274,6 +274,19 @@ export default function App() {
   };
 
   const finalizeOrder = async () => {
+    if (!user) {
+      alert(t("Você precisa estar logado para finalizar o pedido.", "You must be logged in to finalize the order."));
+      navigate('user');
+      return;
+    }
+
+    const isProfileComplete = user.name && user.email && user.telefone && user.cpf && user.nascimento && user.cep && user.endereco;
+    if (!isProfileComplete) {
+      alert(t("Por favor, complete seu perfil antes de finalizar o pedido.", "Please complete your profile before finalizing the order."));
+      navigate('user');
+      return;
+    }
+
     setIsProcessing(true);
     try {
       // Save order to spreadsheet
@@ -435,6 +448,8 @@ export default function App() {
                 isProcessing={isProcessing}
                 formatPrice={formatPrice}
                 t={t}
+                user={user}
+                navigate={navigate}
               />}
           </main>
           

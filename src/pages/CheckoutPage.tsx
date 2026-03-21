@@ -20,6 +20,8 @@ interface CheckoutPageProps {
   isProcessing: boolean;
   formatPrice: (price: number) => string;
   t: (br: any, int: any) => any;
+  user: any;
+  navigate: (page: string) => void;
 }
 
 export const CheckoutPage: React.FC<CheckoutPageProps> = ({ 
@@ -39,8 +41,19 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
   updateCartItemQuantity,
   isProcessing, 
   formatPrice, 
-  t 
+  t,
+  user,
+  navigate
 }) => {
+  const isProfileComplete = user && 
+    user.name && 
+    user.email && 
+    user.telefone && 
+    user.cpf && 
+    user.nascimento && 
+    user.cep && 
+    user.endereco;
+
   const methods = [
     { id: 'pix', label: 'PIX', icon: Zap, a: '#00ff88' }, 
     { id: 'card', label: t('CARTÃO', 'CARD'), icon: CreditCard, a: '#00d2ff' }, 
@@ -72,6 +85,10 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
               <div className="flex flex-col gap-2">
                 <label className="text-[10px] font-black uppercase text-slate-500 ml-2">{t('CPF / Documento', 'Tax ID')}</label>
                 <input value={checkoutData.cpf} onChange={(e) => setCheckoutData({...checkoutData, cpf: e.target.value})} className="w-full bg-white/[0.03] border border-white/10 h-14 px-5 rounded-2xl outline-none focus:border-[var(--theme-primary)] text-white text-sm transition-all" placeholder="000.000.000-00" />
+              </div>
+              <div className="flex flex-col gap-2">
+                <label className="text-[10px] font-black uppercase text-slate-500 ml-2">{t('Data de Nascimento', 'Birth Date')}</label>
+                <input type="date" value={checkoutData.nascimento} onChange={(e) => setCheckoutData({...checkoutData, nascimento: e.target.value})} className="w-full bg-white/[0.03] border border-white/10 h-14 px-5 rounded-2xl outline-none focus:border-[var(--theme-primary)] text-white text-sm transition-all" />
               </div>
               <div className="flex flex-col gap-2">
                 <label className="text-[10px] font-black uppercase text-slate-500 ml-2">{t('CEP', 'Zip Code')}</label>
@@ -168,9 +185,37 @@ export const CheckoutPage: React.FC<CheckoutPageProps> = ({
                 <div className="flex justify-between text-[9px] md:text-[11px] font-black uppercase tracking-widest text-slate-500"><span>{t('Frete', 'Shipping')}</span><span className="text-white italic">{formatPrice(shippingValue)}</span></div>
               </div>
             </div>
-            <button onClick={finalizeOrder} disabled={isProcessing || cart.length === 0} className="w-full bg-gradient-to-br from-[#00ff88] to-[#00a859] text-black py-6 md:py-8 mt-8 md:mt-12 rounded-[24px] md:rounded-[30px] text-[12px] md:text-[14px] font-black shadow-xl hover:scale-[1.03] active:scale-95 transition-all uppercase tracking-widest italic disabled:opacity-50">
-              {isProcessing ? t('PROCESSANDO...', 'PROCESSING...') : t('IR PARA PAGAMENTO', 'GO TO PAYMENT')}
-            </button>
+
+            {!user ? (
+              <div className="mt-8 p-6 bg-red-500/10 border border-red-500/20 rounded-3xl text-center">
+                <p className="text-[10px] font-black uppercase text-red-400 mb-4 tracking-widest">
+                  {t('Você precisa estar logado para finalizar o pedido', 'You must be logged in to finalize the order')}
+                </p>
+                <button 
+                  onClick={() => navigate('user')}
+                  className="w-full bg-white/10 hover:bg-white/20 text-white py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all"
+                >
+                  {t('FAZER LOGIN / CADASTRO', 'LOGIN / REGISTER')}
+                </button>
+              </div>
+            ) : !isProfileComplete ? (
+              <div className="mt-8 p-6 bg-amber-500/10 border border-amber-500/20 rounded-3xl text-center">
+                <p className="text-[10px] font-black uppercase text-amber-400 mb-4 tracking-widest">
+                  {t('Complete seu perfil para finalizar o pedido', 'Complete your profile to finalize the order')}
+                </p>
+                <button 
+                  onClick={() => navigate('user')}
+                  className="w-full bg-white/10 hover:bg-white/20 text-white py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all"
+                >
+                  {t('COMPLETAR PERFIL', 'COMPLETE PROFILE')}
+                </button>
+              </div>
+            ) : (
+              <button onClick={finalizeOrder} disabled={isProcessing || cart.length === 0} className="w-full bg-gradient-to-br from-[#00ff88] to-[#00a859] text-black py-6 md:py-8 mt-8 md:mt-12 rounded-[24px] md:rounded-[30px] text-[12px] md:text-[14px] font-black shadow-xl hover:scale-[1.03] active:scale-95 transition-all uppercase tracking-widest italic disabled:opacity-50">
+                {isProcessing ? t('PROCESSANDO...', 'PROCESSING...') : t('IR PARA PAGAMENTO', 'GO TO PAYMENT')}
+              </button>
+            )}
+
             <div className="mt-6 md:mt-8 pt-6 md:pt-8 border-t border-white/10 text-center font-bold">
               <span className="text-[9px] md:text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] md:tracking-[0.4em] block mb-2">{t('Total do Lançamento', 'Total Amount')}</span>
               <span className="text-3xl md:text-4xl font-black italic tracking-tighter text-white">{formatPrice(totalGeral)}</span>
