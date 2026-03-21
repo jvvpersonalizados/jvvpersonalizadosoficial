@@ -21,16 +21,34 @@ function getConfigs() {
 }
 
 /**
- * MAPEAMENTO DINÂMICO DE COLUNAS
- * Retorna um objeto com os índices das colunas baseados nos cabeçalhos.
+ * MAPEAMENTO DINÂMICO DE COLUNAS (ROBUSTO)
+ * Retorna um objeto com os índices das colunas baseados nos cabeçalhos normalizados.
  */
 function getColumnMapping(sheet) {
-  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const lastCol = sheet.getLastColumn();
+  if (lastCol === 0) return {};
+  const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
   const mapping = {};
   headers.forEach((header, index) => {
-    if (header) mapping[header.toString().trim()] = index;
+    if (header) {
+      // Normaliza: minúsculo, sem espaços, sem acentos, sem hífens
+      const h = header.toString().trim().toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .replace(/-/g, "")
+        .replace(/\s/g, "");
+      mapping[h] = index;
+    }
   });
   return mapping;
+}
+
+/**
+ * BUSCA VALOR POR CHAVE MAPEADA
+ */
+function getVal(row, mapping, key) {
+  const normalizedKey = key.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/-/g, "").replace(/\s/g, "");
+  const index = mapping[normalizedKey];
+  return index !== undefined ? row[index] : undefined;
 }
 
 function setupSpreadsheet() {
@@ -452,18 +470,24 @@ function updateUser(ss, email, userData) {
   const mapping = getColumnMapping(sheet);
   
   for (let i = 1; i < data.length; i++) {
-    if (data[i][mapping["Email"]] && data[i][mapping["Email"]].toString().toLowerCase() === email.toLowerCase()) {
+    const userEmail = getVal(data[i], mapping, "Email");
+    if (userEmail && userEmail.toString().toLowerCase() === email.toLowerCase()) {
       const row = i + 1;
       
-      if (userData.name !== undefined) sheet.getRange(row, mapping["Nome"] + 1).setValue(userData.name);
-      if (userData.telefone !== undefined) sheet.getRange(row, mapping["Telefone"] + 1).setValue(userData.telefone);
-      if (userData.cpf !== undefined) sheet.getRange(row, mapping["CPF"] + 1).setValue(userData.cpf);
-      if (userData.nascimento !== undefined) sheet.getRange(row, mapping["Nascimento"] + 1).setValue(userData.nascimento);
-      if (userData.cep !== undefined) sheet.getRange(row, mapping["CEP"] + 1).setValue(userData.cep);
-      if (userData.endereco !== undefined) sheet.getRange(row, mapping["Endereco"] + 1).setValue(userData.endereco);
-      if (userData.photo !== undefined) sheet.getRange(row, mapping["Foto"] + 1).setValue(userData.photo);
-      if (userData.thermometer !== undefined) sheet.getRange(row, mapping["Termômetro"] + 1).setValue(userData.thermometer);
-      if (userData.score !== undefined) sheet.getRange(row, mapping["Score"] + 1).setValue(userData.score);
+      const updateField = (key, val) => {
+        const idx = mapping[key.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/-/g, "").replace(/\s/g, "")];
+        if (idx !== undefined && val !== undefined) sheet.getRange(row, idx + 1).setValue(val);
+      };
+
+      updateField("Nome", userData.name);
+      updateField("Telefone", userData.telefone);
+      updateField("CPF", userData.cpf);
+      updateField("Nascimento", userData.nascimento);
+      updateField("CEP", userData.cep);
+      updateField("Endereco", userData.endereco);
+      updateField("Foto", userData.photo);
+      updateField("Termometro", userData.thermometer);
+      updateField("Score", userData.score);
       
       return response({ success: true, message: "Perfil atualizado com sucesso!" });
     }
@@ -473,30 +497,30 @@ function updateUser(ss, email, userData) {
 
 function login(ss, email, pass) {
   const sheet = getSafeSheet(ss, 'Usuários');
-  if (!sheet) return response({ success: false, message: "Erro: Tabela 'Usuários' não encontrada. Execute o setup." });
+  if (!sheet) return response({ success: false, message: "Erro: Tabela 'Usuários' não encontrada." });
   
   const data = sheet.getDataRange().getValues();
   const mapping = getColumnMapping(sheet);
   
   for (let i = 1; i < data.length; i++) {
-    const userEmail = data[i][mapping["Email"]];
-    const userPass = data[i][mapping["Senha"]];
+    const userEmail = getVal(data[i], mapping, "Email");
+    const userPass = getVal(data[i], mapping, "Senha");
     
     if (userEmail && userEmail.toString().toLowerCase() === email.toLowerCase() && 
         userPass && userPass.toString() === pass.toString()) {
       return response({ success: true, data: { 
-        id: data[i][mapping["ID"]], 
-        name: data[i][mapping["Nome"]], 
-        email: data[i][mapping["Email"]], 
-        role: data[i][mapping["Função"]],
-        telefone: data[i][mapping["Telefone"]],
-        cpf: data[i][mapping["CPF"]],
-        nascimento: data[i][mapping["Nascimento"]],
-        cep: data[i][mapping["CEP"]],
-        endereco: data[i][mapping["Endereco"]],
-        thermometer: data[i][mapping["Termômetro"]] || 'Morno',
-        score: data[i][mapping["Score"]] || 'Bronze',
-        photo: data[i][mapping["Foto"]] || ''
+        id: getVal(data[i], mapping, "ID"), 
+        name: getVal(data[i], mapping, "Nome"), 
+        email: getVal(data[i], mapping, "Email"), 
+        role: getVal(data[i], mapping, "Funcao"),
+        telefone: getVal(data[i], mapping, "Telefone"),
+        cpf: getVal(data[i], mapping, "CPF"),
+        nascimento: getVal(data[i], mapping, "Nascimento"),
+        cep: getVal(data[i], mapping, "CEP"),
+        endereco: getVal(data[i], mapping, "Endereco"),
+        thermometer: getVal(data[i], mapping, "Termometro") || 'Morno',
+        score: getVal(data[i], mapping, "Score") || 'Bronze',
+        photo: getVal(data[i], mapping, "Foto") || ''
       } });
     }
   }
@@ -511,7 +535,8 @@ function register(ss, userData) {
   const mapping = getColumnMapping(sheet);
   
   for (let i = 1; i < data.length; i++) {
-    if (data[i][mapping["Email"]] && data[i][mapping["Email"]].toString().toLowerCase() === userData.email.toLowerCase()) {
+    const userEmail = getVal(data[i], mapping, "Email");
+    if (userEmail && userEmail.toString().toLowerCase() === userData.email.toLowerCase()) {
       return response({ success: false, message: "E-mail já cadastrado." });
     }
   }
@@ -519,22 +544,22 @@ function register(ss, userData) {
   const id = 'U' + Math.floor(Math.random() * 1000000);
   const role = (userData.email.toLowerCase() === 'jvvpersonalizados@gmail.com') ? 'Admin' : 'client';
   
-  // Criar array de linha baseado no mapeamento
-  const newRow = new Array(Object.keys(mapping).length);
-  newRow[mapping["ID"]] = id;
-  newRow[mapping["Nome"]] = userData.name;
-  newRow[mapping["Email"]] = userData.email;
-  newRow[mapping["Senha"]] = userData.pass;
-  newRow[mapping["Função"]] = role;
-  newRow[mapping["CriadoEm"]] = new Date();
-  newRow[mapping["Telefone"]] = "";
-  newRow[mapping["CPF"]] = "";
-  newRow[mapping["Nascimento"]] = "";
-  newRow[mapping["CEP"]] = "";
-  newRow[mapping["Endereco"]] = "";
-  newRow[mapping["Termômetro"]] = "Morno";
-  newRow[mapping["Score"]] = "Bronze";
-  newRow[mapping["Foto"]] = "";
+  // Criar array de linha baseado no mapeamento de cabeçalhos reais
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const newRow = new Array(headers.length);
+  
+  headers.forEach((header, index) => {
+    const h = header.toString().trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/-/g, "").replace(/\s/g, "");
+    if (h === "id") newRow[index] = id;
+    else if (h === "nome") newRow[index] = userData.name;
+    else if (h === "email") newRow[index] = userData.email;
+    else if (h === "senha") newRow[index] = userData.pass;
+    else if (h === "funcao") newRow[index] = role;
+    else if (h === "criadoem") newRow[index] = new Date();
+    else if (h === "termometro") newRow[index] = "Morno";
+    else if (h === "score") newRow[index] = "Bronze";
+    else newRow[index] = "";
+  });
   
   sheet.appendRow(newRow);
   return response({ success: true, data: { id, name: userData.name, email: userData.email, role: role, thermometer: "Morno", score: "Bronze", photo: "" } });
@@ -549,17 +574,18 @@ function getCatalog(ss) {
   const products = [];
   
   for (let i = 1; i < data.length; i++) {
-    if (!data[i][mapping["Nome"]]) continue;
+    const name = getVal(data[i], mapping, "Nome");
+    if (!name) continue;
     products.push({
-      id: data[i][mapping["ID"]],
-      name: data[i][mapping["Nome"]],
-      price: parseFloat(data[i][mapping["Preço"]] || 0),
-      stock: parseInt(data[i][mapping["Estoque"]] || 0),
-      img: data[i][mapping["Imagem"]],
-      preview: data[i][mapping["Preview"]] || '',
-      description: data[i][mapping["Descrição"]] || '',
-      category: data[i][mapping["Categoria"]] || 'Geral',
-      tags: data[i][mapping["Etiquetas"]] ? data[i][mapping["Etiquetas"]].toString().split(',') : []
+      id: getVal(data[i], mapping, "ID"),
+      name: name,
+      price: parseFloat(getVal(data[i], mapping, "Preco") || 0),
+      stock: parseInt(getVal(data[i], mapping, "Estoque") || 0),
+      img: getVal(data[i], mapping, "Imagem"),
+      preview: getVal(data[i], mapping, "Preview") || '',
+      description: getVal(data[i], mapping, "Descricao") || '',
+      category: getVal(data[i], mapping, "Categoria") || 'Geral',
+      tags: getVal(data[i], mapping, "Etiquetas") ? getVal(data[i], mapping, "Etiquetas").toString().split(',') : []
     });
   }
   return response({ success: true, data: products });
@@ -569,9 +595,19 @@ function getOrders(ss) {
   const sheet = getSafeSheet(ss, 'Pedidos');
   if (!sheet) return response({ success: true, data: [] });
   const data = sheet.getDataRange().getValues();
+  const mapping = getColumnMapping(sheet);
   const orders = [];
   for (let i = 1; i < data.length; i++) {
-    orders.push({ id: data[i][0], user: data[i][1], email: data[i][2], total: data[i][3], status: data[i][4], items: data[i][5], date: data[i][6], progress: data[i][7] });
+    orders.push({ 
+      id: getVal(data[i], mapping, "ID"), 
+      user: getVal(data[i], mapping, "Usuario"), 
+      email: getVal(data[i], mapping, "Email"), 
+      total: getVal(data[i], mapping, "Total"), 
+      status: getVal(data[i], mapping, "Status"), 
+      items: getVal(data[i], mapping, "Itens"), 
+      date: getVal(data[i], mapping, "Data"), 
+      progress: getVal(data[i], mapping, "Progresso") 
+    });
   }
   return response({ success: true, data: orders });
 }
@@ -592,24 +628,52 @@ function getAdminStats(ss) {
 }
 
 function addProduct(ss, product) {
-  const sheet = ss.getSheetByName('Catálogo');
+  const sheet = getSafeSheet(ss, 'Catálogo');
+  const mapping = getColumnMapping(sheet);
   const id = 'P' + Math.floor(Math.random() * 1000000);
-  sheet.appendRow([id, product.name, product.price, product.stock || 0, product.image, "", product.description || '', product.category || 'Geral', product.tags || '']);
+  
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const newRow = new Array(headers.length);
+  
+  headers.forEach((header, index) => {
+    const h = header.toString().trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/-/g, "").replace(/\s/g, "");
+    if (h === "id") newRow[index] = id;
+    else if (h === "nome") newRow[index] = product.name;
+    else if (h === "preco") newRow[index] = product.price;
+    else if (h === "estoque") newRow[index] = product.stock || 0;
+    else if (h === "imagem") newRow[index] = product.image;
+    else if (h === "descricao") newRow[index] = product.description || '';
+    else if (h === "categoria") newRow[index] = product.category || 'Geral';
+    else if (h === "etiquetas") newRow[index] = product.tags || '';
+    else newRow[index] = "";
+  });
+  
+  sheet.appendRow(newRow);
   return response({ success: true, message: "Produto adicionado!" });
 }
 
 function updateProduct(ss, productId, product) {
-  const sheet = ss.getSheetByName('Catálogo');
+  const sheet = getSafeSheet(ss, 'Catálogo');
   const data = sheet.getDataRange().getValues();
+  const mapping = getColumnMapping(sheet);
+  
   for (let i = 1; i < data.length; i++) {
-    if (data[i][0] === productId) {
-      if (product.name) sheet.getRange(i + 1, 2).setValue(product.name);
-      if (product.price !== undefined) sheet.getRange(i + 1, 3).setValue(product.price);
-      if (product.stock !== undefined) sheet.getRange(i + 1, 4).setValue(product.stock);
-      if (product.image) sheet.getRange(i + 1, 5).setValue(product.image);
-      if (product.description) sheet.getRange(i + 1, 7).setValue(product.description);
-      if (product.category) sheet.getRange(i + 1, 8).setValue(product.category);
-      if (product.tags) sheet.getRange(i + 1, 9).setValue(product.tags);
+    const id = getVal(data[i], mapping, "ID");
+    if (id === productId) {
+      const row = i + 1;
+      const updateField = (key, val) => {
+        const idx = mapping[key.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/-/g, "").replace(/\s/g, "")];
+        if (idx !== undefined && val !== undefined) sheet.getRange(row, idx + 1).setValue(val);
+      };
+
+      updateField("Nome", product.name);
+      updateField("Preco", product.price);
+      updateField("Estoque", product.stock);
+      updateField("Imagem", product.image);
+      updateField("Descricao", product.description);
+      updateField("Categoria", product.category);
+      updateField("Etiquetas", product.tags);
+      
       return response({ success: true, message: "Produto atualizado!" });
     }
   }
@@ -617,76 +681,130 @@ function updateProduct(ss, productId, product) {
 }
 
 function searchCatalog(ss, query) {
-  const sheet = ss.getSheetByName('Catálogo');
+  const sheet = getSafeSheet(ss, 'Catálogo');
   const data = sheet.getDataRange().getValues();
+  const mapping = getColumnMapping(sheet);
   const results = [];
   const q = query.toLowerCase();
+  
   for (let i = 1; i < data.length; i++) {
-    if (data[i][1].toString().toLowerCase().includes(q) || data[i][7].toString().toLowerCase().includes(q)) {
-      results.push({ id: data[i][0], name: data[i][1], price: data[i][2], stock: data[i][3], img: data[i][4], category: data[i][7] });
+    const name = getVal(data[i], mapping, "Nome") || "";
+    const category = getVal(data[i], mapping, "Categoria") || "";
+    if (name.toString().toLowerCase().includes(q) || category.toString().toLowerCase().includes(q)) {
+      results.push({ 
+        id: getVal(data[i], mapping, "ID"), 
+        name: name, 
+        price: getVal(data[i], mapping, "Preco"), 
+        stock: getVal(data[i], mapping, "Estoque"), 
+        img: getVal(data[i], mapping, "Imagem"), 
+        category: category 
+      });
     }
   }
   return response({ success: true, data: results });
 }
 
-function getSettings(ss) {
-  const sheet = ss.getSheetByName('Configurações');
-  const data = sheet.getDataRange().getValues();
-  const settings = {};
-  for (let i = 1; i < data.length; i++) {
-    settings[data[i][0]] = data[i][1];
-  }
-  return response({ success: true, data: settings });
-}
-
-function updateSettings(ss, newSettings) {
-  const sheet = ss.getSheetByName('Configurações');
-  for (let key in newSettings) {
-    let found = false;
-    const data = sheet.getDataRange().getValues();
-    for (let i = 1; i < data.length; i++) {
-      if (data[i][0] === key) {
-        sheet.getRange(i + 1, 2).setValue(newSettings[key]);
-        found = true;
-        break;
-      }
-    }
-    if (!found) sheet.appendRow([key, newSettings[key]]);
-  }
-  return response({ success: true, message: "Configurações atualizadas!" });
-}
-
 function syncCatalog(ss, products) {
-  const sheet = ss.getSheetByName('Catálogo');
+  const sheet = getSafeSheet(ss, 'Catálogo');
   const data = sheet.getDataRange().getValues();
+  const mapping = getColumnMapping(sheet);
   const existingMap = {};
+  
   for (let i = 1; i < data.length; i++) {
-    existingMap[data[i][1].toString().toLowerCase()] = i + 1;
+    const name = getVal(data[i], mapping, "Nome");
+    if (name) existingMap[name.toString().toLowerCase()] = i + 1;
   }
 
   products.forEach(p => {
     const nameLower = p.name.toString().toLowerCase();
     if (existingMap[nameLower]) {
       const row = existingMap[nameLower];
-      // Update existing
-      if (p.price !== undefined) sheet.getRange(row, 3).setValue(p.price);
-      if (p.image) sheet.getRange(row, 5).setValue(p.image);
+      const updateField = (key, val) => {
+        const idx = mapping[key.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/-/g, "").replace(/\s/g, "")];
+        if (idx !== undefined && val !== undefined) sheet.getRange(row, idx + 1).setValue(val);
+      };
+      updateField("Preco", p.price);
+      updateField("Imagem", p.image);
     } else {
-      // Add new
-      const id = 'P' + Math.floor(Math.random() * 1000000);
-      sheet.appendRow([id, p.name, p.price, 10, p.image, "", '', 'Importado', '']);
+      addProduct(ss, p);
     }
   });
   return response({ success: true, message: "Catálogo sincronizado e atualizado!" });
+}
+
+function getAdminStats(ss) {
+  const dashboard = ss.getSheetByName('Dashboard');
+  if (!dashboard) return response({ success: false, message: "Dashboard não encontrado." });
+  const stats = dashboard.getRange("B2:B6").getValues();
+  return response({
+    success: true,
+    data: {
+      totalRevenue: stats[0][0],
+      pendingOrders: stats[1][0],
+      newUsers: stats[2][0],
+      avgTicket: stats[3][0],
+      outOfStock: stats[4][0]
+    }
+  });
+}
+
+function getSettings(ss) {
+  const sheet = getSafeSheet(ss, 'Configurações');
+  const data = sheet.getDataRange().getValues();
+  const mapping = getColumnMapping(sheet);
+  const settings = {};
+  for (let i = 1; i < data.length; i++) {
+    const key = getVal(data[i], mapping, "Chave");
+    const val = getVal(data[i], mapping, "Valor");
+    if (key) settings[key] = val;
+  }
+  return response({ success: true, data: settings });
+}
+
+function updateSettings(ss, newSettings) {
+  const sheet = getSafeSheet(ss, 'Configurações');
+  const mapping = getColumnMapping(sheet);
+  
+  for (let key in newSettings) {
+    let found = false;
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (getVal(data[i], mapping, "Chave") === key) {
+        const idx = mapping["valor"];
+        if (idx !== undefined) sheet.getRange(i + 1, idx + 1).setValue(newSettings[key]);
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+      const newRow = new Array(headers.length);
+      headers.forEach((header, index) => {
+        const h = header.toString().trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/-/g, "").replace(/\s/g, "");
+        if (h === "chave") newRow[index] = key;
+        else if (h === "valor") newRow[index] = newSettings[key];
+        else newRow[index] = "";
+      });
+      sheet.appendRow(newRow);
+    }
+  }
+  return response({ success: true, message: "Configurações atualizadas!" });
 }
 
 function getUsers(ss) {
   const sheet = getSafeSheet(ss, 'Usuários');
   if (!sheet) return response({ success: true, data: [] });
   const data = sheet.getDataRange().getValues();
+  const mapping = getColumnMapping(sheet);
   const users = [];
   for (let i = 1; i < data.length; i++) {
-    users.push({ id: data[i][0], name: data[i][1], email: data[i][2], role: data[i][4], createdAt: data[i][5] });
+    users.push({ 
+      id: getVal(data[i], mapping, "ID"), 
+      name: getVal(data[i], mapping, "Nome"), 
+      email: getVal(data[i], mapping, "Email"), 
+      role: getVal(data[i], mapping, "Funcao"), 
+      createdAt: getVal(data[i], mapping, "CriadoEm") 
+    });
   }
   return response({ success: true, data: users });
 }
@@ -695,24 +813,26 @@ function getUser(ss, email) {
   const sheet = getSafeSheet(ss, 'Usuários');
   if (!sheet) return response({ success: false, message: "Tabela não encontrada." });
   const data = sheet.getDataRange().getValues();
+  const mapping = getColumnMapping(sheet);
   for (let i = 1; i < data.length; i++) {
-    if (data[i][2] && data[i][2].toString().toLowerCase() === email.toLowerCase()) {
+    const userEmail = getVal(data[i], mapping, "Email");
+    if (userEmail && userEmail.toString().toLowerCase() === email.toLowerCase()) {
       return response({ 
         success: true, 
         data: { 
-          id: data[i][0], 
-          name: data[i][1], 
-          email: data[i][2], 
-          role: data[i][4],
-          createdAt: data[i][5],
-          telefone: data[i][6],
-          cpf: data[i][7],
-          nascimento: data[i][8],
-          cep: data[i][9],
-          endereco: data[i][10],
-          thermometer: data[i][11] || 'Morno',
-          score: data[i][12] || 'Bronze',
-          photo: data[i][13] || ''
+          id: getVal(data[i], mapping, "ID"), 
+          name: getVal(data[i], mapping, "Nome"), 
+          email: getVal(data[i], mapping, "Email"), 
+          role: getVal(data[i], mapping, "Funcao"),
+          createdAt: getVal(data[i], mapping, "CriadoEm"),
+          telefone: getVal(data[i], mapping, "Telefone"),
+          cpf: getVal(data[i], mapping, "CPF"),
+          nascimento: getVal(data[i], mapping, "Nascimento"),
+          cep: getVal(data[i], mapping, "CEP"),
+          endereco: getVal(data[i], mapping, "Endereco"),
+          thermometer: getVal(data[i], mapping, "Termometro") || 'Morno',
+          score: getVal(data[i], mapping, "Score") || 'Bronze',
+          photo: getVal(data[i], mapping, "Foto") || ''
         } 
       });
     }
@@ -724,18 +844,18 @@ function getUserOrders(ss, email) {
   const sheet = getSafeSheet(ss, 'Pedidos');
   if (!sheet) return response({ success: true, data: [] });
   const data = sheet.getDataRange().getValues();
+  const mapping = getColumnMapping(sheet);
   const orders = [];
   for (let i = 1; i < data.length; i++) {
-    if (data[i][2].toString().toLowerCase() === email.toLowerCase()) {
+    const orderEmail = getVal(data[i], mapping, "Email");
+    if (orderEmail && orderEmail.toString().toLowerCase() === email.toLowerCase()) {
       orders.push({ 
-        id: data[i][0], 
-        user: data[i][1], 
-        email: data[i][2], 
-        total: data[i][3], 
-        status: data[i][4], 
-        items: data[i][5], 
-        date: data[i][6], 
-        progress: data[i][7] 
+        id: getVal(data[i], mapping, "ID"), 
+        total: getVal(data[i], mapping, "Total"), 
+        status: getVal(data[i], mapping, "Status"), 
+        items: getVal(data[i], mapping, "Itens"), 
+        date: getVal(data[i], mapping, "Data"), 
+        progress: getVal(data[i], mapping, "Progresso") 
       });
     }
   }
@@ -743,10 +863,12 @@ function getUserOrders(ss, email) {
 }
 
 function deleteUser(ss, userId) {
-  const sheet = ss.getSheetByName('Usuários');
+  const sheet = getSafeSheet(ss, 'Usuários');
+  if (!sheet) return response({ success: false, message: "Tabela não encontrada." });
   const data = sheet.getDataRange().getValues();
+  const mapping = getColumnMapping(sheet);
   for (let i = 1; i < data.length; i++) {
-    if (data[i][0] === userId) {
+    if (getVal(data[i], mapping, "ID") === userId) {
       sheet.deleteRow(i + 1);
       return response({ success: true, message: "Usuário removido!" });
     }
@@ -755,10 +877,12 @@ function deleteUser(ss, userId) {
 }
 
 function deleteProduct(ss, productId) {
-  const sheet = ss.getSheetByName('Catálogo');
+  const sheet = getSafeSheet(ss, 'Catálogo');
+  if (!sheet) return response({ success: false, message: "Tabela não encontrada." });
   const data = sheet.getDataRange().getValues();
+  const mapping = getColumnMapping(sheet);
   for (let i = 1; i < data.length; i++) {
-    if (data[i][0] === productId) {
+    if (getVal(data[i], mapping, "ID") === productId) {
       sheet.deleteRow(i + 1);
       return response({ success: true, message: "Produto removido!" });
     }
@@ -770,39 +894,64 @@ function getBanners(ss) {
   const sheet = getSafeSheet(ss, 'Banners');
   if (!sheet) return response({ success: true, data: [] });
   const data = sheet.getDataRange().getValues();
+  const mapping = getColumnMapping(sheet);
   const banners = [];
   for (let i = 1; i < data.length; i++) {
     banners.push({
-      id: data[i][0],
-      title: data[i][1],
-      subtitle: data[i][2],
-      image: data[i][3],
-      link: data[i][4],
-      active: data[i][5] === true || data[i][5] === 'TRUE',
-      order: parseInt(data[i][6] || 0)
+      id: getVal(data[i], mapping, "ID"),
+      title: getVal(data[i], mapping, "Titulo"),
+      subtitle: getVal(data[i], mapping, "Subtitulo"),
+      image: getVal(data[i], mapping, "Imagem"),
+      link: getVal(data[i], mapping, "Link"),
+      active: getVal(data[i], mapping, "Ativo") === true || getVal(data[i], mapping, "Ativo") === 'TRUE',
+      order: parseInt(getVal(data[i], mapping, "Ordem") || 0)
     });
   }
   return response({ success: true, data: banners });
 }
 
 function addBanner(ss, banner) {
-  const sheet = ss.getSheetByName('Banners');
+  const sheet = getSafeSheet(ss, 'Banners');
   const id = 'B' + Math.floor(Math.random() * 1000000);
-  sheet.appendRow([id, banner.title, banner.subtitle, banner.image, banner.link, true, banner.order || 0]);
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const newRow = new Array(headers.length);
+  
+  headers.forEach((header, index) => {
+    const h = header.toString().trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/-/g, "").replace(/\s/g, "");
+    if (h === "id") newRow[index] = id;
+    else if (h === "titulo") newRow[index] = banner.title;
+    else if (h === "subtitulo") newRow[index] = banner.subtitle;
+    else if (h === "imagem") newRow[index] = banner.image;
+    else if (h === "link") newRow[index] = banner.link;
+    else if (h === "ativo") newRow[index] = true;
+    else if (h === "ordem") newRow[index] = banner.order || 0;
+    else newRow[index] = "";
+  });
+  
+  sheet.appendRow(newRow);
   return response({ success: true, message: "Banner adicionado!" });
 }
 
 function updateBanner(ss, bannerId, banner) {
-  const sheet = ss.getSheetByName('Banners');
+  const sheet = getSafeSheet(ss, 'Banners');
   const data = sheet.getDataRange().getValues();
+  const mapping = getColumnMapping(sheet);
+  
   for (let i = 1; i < data.length; i++) {
-    if (data[i][0] === bannerId) {
-      if (banner.title !== undefined) sheet.getRange(i + 1, 2).setValue(banner.title);
-      if (banner.subtitle !== undefined) sheet.getRange(i + 1, 3).setValue(banner.subtitle);
-      if (banner.image !== undefined) sheet.getRange(i + 1, 4).setValue(banner.image);
-      if (banner.link !== undefined) sheet.getRange(i + 1, 5).setValue(banner.link);
-      if (banner.active !== undefined) sheet.getRange(i + 1, 6).setValue(banner.active);
-      if (banner.order !== undefined) sheet.getRange(i + 1, 7).setValue(banner.order);
+    if (getVal(data[i], mapping, "ID") === bannerId) {
+      const row = i + 1;
+      const updateField = (key, val) => {
+        const idx = mapping[key.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/-/g, "").replace(/\s/g, "")];
+        if (idx !== undefined && val !== undefined) sheet.getRange(row, idx + 1).setValue(val);
+      };
+
+      updateField("Titulo", banner.title);
+      updateField("Subtitulo", banner.subtitle);
+      updateField("Imagem", banner.image);
+      updateField("Link", banner.link);
+      updateField("Ativo", banner.active);
+      updateField("Ordem", banner.order);
+      
       return response({ success: true, message: "Banner atualizado!" });
     }
   }
@@ -810,10 +959,11 @@ function updateBanner(ss, bannerId, banner) {
 }
 
 function deleteBanner(ss, bannerId) {
-  const sheet = ss.getSheetByName('Banners');
+  const sheet = getSafeSheet(ss, 'Banners');
   const data = sheet.getDataRange().getValues();
+  const mapping = getColumnMapping(sheet);
   for (let i = 1; i < data.length; i++) {
-    if (data[i][0] === bannerId) {
+    if (getVal(data[i], mapping, "ID") === bannerId) {
       sheet.deleteRow(i + 1);
       return response({ success: true, message: "Banner removido!" });
     }
@@ -822,14 +972,13 @@ function deleteBanner(ss, bannerId) {
 }
 
 function requestPasswordReset(ss, email) {
-  const sheet = ss.getSheetByName('Usuários');
+  const sheet = getSafeSheet(ss, 'Usuários');
   const data = sheet.getDataRange().getValues();
+  const mapping = getColumnMapping(sheet);
   
   for (let i = 1; i < data.length; i++) {
-    if (data[i][2] && data[i][2].toString().toLowerCase() === email.toLowerCase()) {
-      // Em um sistema real, aqui enviaríamos um e-mail com um código.
-      // Como estamos no Apps Script, vamos apenas simular o sucesso.
-      // O código de reset padrão para teste será '123456'
+    const userEmail = getVal(data[i], mapping, "Email");
+    if (userEmail && userEmail.toString().toLowerCase() === email.toLowerCase()) {
       return response({ 
         success: true, 
         message: "Instruções de recuperação enviadas para seu e-mail galáctico! Verifique sua caixa de entrada (e spam)." 
@@ -840,18 +989,22 @@ function requestPasswordReset(ss, email) {
 }
 
 function resetPassword(ss, email, code, newPass) {
-  const sheet = ss.getSheetByName('Usuários');
+  const sheet = getSafeSheet(ss, 'Usuários');
   const data = sheet.getDataRange().getValues();
+  const mapping = getColumnMapping(sheet);
   
-  // O código '123456' é o nosso código mestre de demonstração
   if (code !== '123456') {
     return response({ success: false, message: "Código de recuperação inválido ou expirado." });
   }
 
   for (let i = 1; i < data.length; i++) {
-    if (data[i][2] && data[i][2].toString().toLowerCase() === email.toLowerCase()) {
-      sheet.getRange(i + 1, 4).setValue(newPass); // Coluna 4 é a Senha
-      return response({ success: true, message: "Senha alterada com sucesso! Agora você pode acessar o portal." });
+    const userEmail = getVal(data[i], mapping, "Email");
+    if (userEmail && userEmail.toString().toLowerCase() === email.toLowerCase()) {
+      const idx = mapping["senha"];
+      if (idx !== undefined) {
+        sheet.getRange(i + 1, idx + 1).setValue(newPass);
+        return response({ success: true, message: "Senha alterada com sucesso! Agora você pode acessar o portal." });
+      }
     }
   }
   return response({ success: false, message: "Erro ao processar a troca de senha." });
@@ -860,30 +1013,52 @@ function resetPassword(ss, email, code, newPass) {
 // --- NOVAS FUNÇÕES DE CARRINHO E FAVORITOS ---
 
 function syncCart(ss, email, cart) {
-  const sheet = ss.getSheetByName('Carrinhos');
+  const sheet = getSafeSheet(ss, 'Carrinhos');
+  if (!sheet) return response({ success: false, message: "Tabela 'Carrinhos' não encontrada." });
+  
   const data = sheet.getDataRange().getValues();
+  const mapping = getColumnMapping(sheet);
   const cartJson = JSON.stringify(cart);
   
   for (let i = 1; i < data.length; i++) {
-    if (data[i][0].toString().toLowerCase() === email.toLowerCase()) {
-      sheet.getRange(i + 1, 2).setValue(cartJson);
-      sheet.getRange(i + 1, 3).setValue(new Date());
+    const cartEmail = getVal(data[i], mapping, "Email");
+    if (cartEmail && cartEmail.toString().toLowerCase() === email.toLowerCase()) {
+      const row = i + 1;
+      const updateField = (key, val) => {
+        const idx = mapping[key.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/-/g, "").replace(/\s/g, "")];
+        if (idx !== undefined && val !== undefined) sheet.getRange(row, idx + 1).setValue(val);
+      };
+      updateField("Itens", cartJson);
+      updateField("UltimaAtualizacao", new Date());
       return response({ success: true, message: "Carrinho sincronizado!" });
     }
   }
   
-  sheet.appendRow([email, cartJson, new Date()]);
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const newRow = new Array(headers.length);
+  headers.forEach((header, index) => {
+    const h = header.toString().trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/-/g, "").replace(/\s/g, "");
+    if (h === "email") newRow[index] = email;
+    else if (h === "itens") newRow[index] = cartJson;
+    else if (h === "ultimaatualizacao") newRow[index] = new Date();
+    else newRow[index] = "";
+  });
+  sheet.appendRow(newRow);
   return response({ success: true, message: "Carrinho salvo!" });
 }
 
 function getSavedCart(ss, email) {
-  const sheet = ss.getSheetByName('Carrinhos');
+  const sheet = getSafeSheet(ss, 'Carrinhos');
+  if (!sheet) return response({ success: true, data: [] });
+  
   const data = sheet.getDataRange().getValues();
+  const mapping = getColumnMapping(sheet);
   
   for (let i = 1; i < data.length; i++) {
-    if (data[i][0].toString().toLowerCase() === email.toLowerCase()) {
+    const cartEmail = getVal(data[i], mapping, "Email");
+    if (cartEmail && cartEmail.toString().toLowerCase() === email.toLowerCase()) {
       try {
-        const cart = JSON.parse(data[i][1]);
+        const cart = JSON.parse(getVal(data[i], mapping, "Itens"));
         return response({ success: true, data: cart });
       } catch (e) {
         return response({ success: false, message: "Erro ao ler carrinho salvo." });
@@ -894,25 +1069,34 @@ function getSavedCart(ss, email) {
 }
 
 function addFavorite(ss, email, productId, folder) {
-  let sheet = ss.getSheetByName('Favoritos');
-  if (!sheet) {
-    setupSpreadsheet();
-    sheet = ss.getSheetByName('Favoritos');
-  }
-  if (!sheet) return response({ success: false, message: "Sheet Favoritos not found" });
+  const sheet = getSafeSheet(ss, 'Favoritos');
+  if (!sheet) return response({ success: false, message: "Tabela 'Favoritos' não encontrada." });
   
   const data = sheet.getDataRange().getValues();
+  const mapping = getColumnMapping(sheet);
   
-  // Evitar duplicados na mesma pasta
   for (let i = 1; i < data.length; i++) {
-    if (data[i][0] && data[i][0].toString().toLowerCase() === email.toLowerCase() && 
-        data[i][1] && data[i][1].toString() === productId.toString() && 
-        data[i][2] === folder) {
+    const favEmail = getVal(data[i], mapping, "Email");
+    const favProd = getVal(data[i], mapping, "ProductId");
+    const favFolder = getVal(data[i], mapping, "Pasta");
+    if (favEmail && favEmail.toString().toLowerCase() === email.toLowerCase() && 
+        favProd && favProd.toString() === productId.toString() && 
+        favFolder === folder) {
       return response({ success: true, message: "Já está nos favoritos desta pasta." });
     }
   }
   
-  sheet.appendRow([email, productId, folder, new Date()]);
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const newRow = new Array(headers.length);
+  headers.forEach((header, index) => {
+    const h = header.toString().trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/-/g, "").replace(/\s/g, "");
+    if (h === "email") newRow[index] = email;
+    else if (h === "productid") newRow[index] = productId;
+    else if (h === "pasta") newRow[index] = folder;
+    else if (h === "dataadicao") newRow[index] = new Date();
+    else newRow[index] = "";
+  });
+  sheet.appendRow(newRow);
   return response({ success: true, message: "Adicionado aos favoritos!" });
 }
 
@@ -925,11 +1109,12 @@ function getFavorites(ss, email) {
   const favorites = [];
   
   for (let i = 1; i < data.length; i++) {
-    if (data[i][mapping["Email"]] && data[i][mapping["Email"]].toString().toLowerCase() === email.toLowerCase()) {
+    const favEmail = getVal(data[i], mapping, "Email");
+    if (favEmail && favEmail.toString().toLowerCase() === email.toLowerCase()) {
       favorites.push({
-        productId: data[i][mapping["ProductId"]],
-        folder: data[i][mapping["Pasta"]],
-        addedAt: data[i][mapping["DataAdicao"]]
+        productId: getVal(data[i], mapping, "ProductId"),
+        folder: getVal(data[i], mapping, "Pasta"),
+        addedAt: getVal(data[i], mapping, "DataAdicao")
       });
     }
   }
@@ -937,15 +1122,19 @@ function getFavorites(ss, email) {
 }
 
 function removeFavorite(ss, email, productId, folder) {
-  let sheet = ss.getSheetByName('Favoritos');
-  if (!sheet) return response({ success: false, message: "Sheet Favoritos not found" });
+  const sheet = getSafeSheet(ss, 'Favoritos');
+  if (!sheet) return response({ success: false, message: "Tabela 'Favoritos' não encontrada." });
   
   const data = sheet.getDataRange().getValues();
+  const mapping = getColumnMapping(sheet);
   
   for (let i = data.length - 1; i >= 1; i--) {
-    if (data[i][0] && data[i][0].toString().toLowerCase() === email.toLowerCase() && 
-        data[i][1] && data[i][1].toString() === productId.toString() && 
-        data[i][2] === folder) {
+    const favEmail = getVal(data[i], mapping, "Email");
+    const favProd = getVal(data[i], mapping, "ProductId");
+    const favFolder = getVal(data[i], mapping, "Pasta");
+    if (favEmail && favEmail.toString().toLowerCase() === email.toLowerCase() && 
+        favProd && favProd.toString() === productId.toString() && 
+        favFolder === folder) {
       sheet.deleteRow(i + 1);
       return response({ success: true, message: "Removido dos favoritos!" });
     }
