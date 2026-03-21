@@ -24,7 +24,7 @@ function setupSpreadsheet() {
   const configs = getConfigs();
   const ss = SpreadsheetApp.openById(configs.spreadsheetId);
   const sheets = {
-    "Usuários": ["ID", "Nome", "Email", "Senha", "Função", "CriadoEm"],
+    "Usuários": ["ID", "Nome", "Email", "Senha", "Função", "CriadoEm", "Telefone", "CPF", "Nascimento", "CEP", "Endereco"],
     "Pedidos": ["ID", "Usuário", "Email", "Total", "Status", "Itens", "Data", "Progresso"],
     "Catálogo": ["ID", "Nome", "Preço", "Estoque", "Imagem", "Preview", "Descrição", "Categoria", "Etiquetas"],
     "Configurações": ["Chave", "Valor"],
@@ -194,6 +194,7 @@ function doPost(e) {
       case 'deleteProduct': res = deleteProduct(ss, data.productId); break;
       case 'getUsers': res = getUsers(ss); break;
       case 'getUser': res = getUser(ss, data.email); break;
+      case 'updateUser': res = updateUser(ss, data.email, data.userData); break;
       case 'deleteUser': res = deleteUser(ss, data.userId); break;
       case 'getUserOrders': res = getUserOrders(ss, data.email); break;
       case 'getBanners': res = getBanners(ss); break;
@@ -315,13 +316,42 @@ function getSafeSheet(ss, name) {
   return sheet;
 }
 
+function updateUser(ss, email, userData) {
+  const sheet = getSafeSheet(ss, 'Usuários');
+  if (!sheet) return response({ success: false, message: "Erro: Tabela 'Usuários' não encontrada." });
+  const data = sheet.getDataRange().getValues();
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][2] && data[i][2].toString().toLowerCase() === email.toLowerCase()) {
+      // Update columns: Nome(1), Telefone(6), CPF(7), Nascimento(8), CEP(9), Endereco(10)
+      if (userData.name) sheet.getRange(i + 1, 2).setValue(userData.name);
+      if (userData.telefone) sheet.getRange(i + 1, 7).setValue(userData.telefone);
+      if (userData.cpf) sheet.getRange(i + 1, 8).setValue(userData.cpf);
+      if (userData.nascimento) sheet.getRange(i + 1, 9).setValue(userData.nascimento);
+      if (userData.cep) sheet.getRange(i + 1, 10).setValue(userData.cep);
+      if (userData.endereco) sheet.getRange(i + 1, 11).setValue(userData.endereco);
+      return response({ success: true, message: "Perfil atualizado!" });
+    }
+  }
+  return response({ success: false, message: "Usuário não encontrado." });
+}
+
 function login(ss, email, pass) {
   const sheet = getSafeSheet(ss, 'Usuários');
   if (!sheet) return response({ success: false, message: "Erro: Tabela 'Usuários' não encontrada. Execute o setup." });
   const data = sheet.getDataRange().getValues();
   for (let i = 1; i < data.length; i++) {
     if (data[i][2] && data[i][2].toString().toLowerCase() === email.toLowerCase() && data[i][3] && data[i][3].toString() === pass.toString()) {
-      return response({ success: true, data: { id: data[i][0], name: data[i][1], email: data[i][2], role: data[i][4] } });
+      return response({ success: true, data: { 
+        id: data[i][0], 
+        name: data[i][1], 
+        email: data[i][2], 
+        role: data[i][4],
+        telefone: data[i][6],
+        cpf: data[i][7],
+        nascimento: data[i][8],
+        cep: data[i][9],
+        endereco: data[i][10]
+      } });
     }
   }
   return response({ success: false, message: "E-mail ou senha incorretos." });
@@ -338,7 +368,8 @@ function register(ss, userData) {
   }
   const id = 'U' + Math.floor(Math.random() * 1000000);
   const role = (userData.email.toLowerCase() === 'jvvpersonalizados@gmail.com') ? 'Admin' : 'client';
-  sheet.appendRow([id, userData.name, userData.email, userData.pass, role, new Date()]);
+  // Columns: ID, Nome, Email, Senha, Função, CriadoEm, Telefone, CPF, Nascimento, CEP, Endereco
+  sheet.appendRow([id, userData.name, userData.email, userData.pass, role, new Date(), "", "", "", "", ""]);
   return response({ success: true, data: { id, name: userData.name, email: userData.email, role: role } });
 }
 

@@ -184,9 +184,31 @@ export const UserPanelPage: React.FC<UserPanelPageProps> = ({
     }
   };
 
-  const handleSave = () => {
-    setShowSaveMsg(true);
-    setTimeout(() => setShowSaveMsg(false), 3000);
+  const handleSave = async () => {
+    if (!user?.email) return;
+    setIsLoading(true);
+    try {
+      const res = await apiService.updateUser(user.email, {
+        name: checkoutData.nome,
+        telefone: checkoutData.telefone,
+        cpf: checkoutData.cpf,
+        nascimento: checkoutData.nascimento,
+        cep: checkoutData.cep,
+        endereco: checkoutData.endereco
+      });
+      if (res.success) {
+        setShowSaveMsg(true);
+        setTimeout(() => setShowSaveMsg(false), 3000);
+        // Update local user state if name changed
+        setUser({ ...user, name: checkoutData.nome });
+      } else {
+        setError(res.message);
+      }
+    } catch (err) {
+      setError(t('Erro ao salvar perfil.', 'Error saving profile.'));
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const formatBDay = (dateStr: string) => {
@@ -203,7 +225,11 @@ export const UserPanelPage: React.FC<UserPanelPageProps> = ({
     { id: 'cart', n: t('Carrinho', 'Cart'), i: ShoppingCart },
     { id: 'settings', n: t('Perfil', 'Profile'), i: Settings },
     ...(user?.role === 'Admin' ? [{ id: 'admin', n: t('Admin', 'Admin'), i: ShieldIcon }] : []),
-    { id: 'logout', n: t('Sair', 'Logout'), i: LogOut }
+    { id: 'logout', n: t('Sair', 'Logout'), i: LogOut, action: () => {
+      setUser(null);
+      localStorage.removeItem('jvv-user');
+      window.location.href = '/'; // Force redirect to home and clear state
+    }}
   ];
 
   const fetchAdminData = async () => {
@@ -629,7 +655,17 @@ export const UserPanelPage: React.FC<UserPanelPageProps> = ({
               {menuItems.map(item => {
                 const IconC = item.i;
                 return (
-                  <button key={item.id} onClick={() => item.id === 'logout' ? setUser(null) : setActiveTab(item.id)} className={`w-auto lg:w-full flex items-center gap-3 md:gap-4 px-4 py-3 md:px-6 md:py-4 rounded-[16px] md:rounded-2xl text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all shrink-0 ${activeTab === item.id ? 'bg-[var(--theme-primary)] text-white shadow-[0_0_25px_rgba(var(--theme-primary),0.3)] scale-105' : 'text-slate-500 hover:text-white hover:bg-white/5 border border-transparent'}`}>
+                  <button 
+                    key={item.id} 
+                    onClick={() => {
+                      if ((item as any).action) {
+                        (item as any).action();
+                      } else {
+                        setActiveTab(item.id);
+                      }
+                    }} 
+                    className={`w-auto lg:w-full flex items-center gap-3 md:gap-4 px-4 py-3 md:px-6 md:py-4 rounded-[16px] md:rounded-2xl text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all shrink-0 ${activeTab === item.id ? 'bg-[var(--theme-primary)] text-white shadow-[0_0_25px_rgba(var(--theme-primary),0.3)] scale-105' : 'text-slate-500 hover:text-white hover:bg-white/5 border border-transparent'}`}
+                  >
                     <IconC size={16} className="md:w-4 md:h-4" /> {item.n}
                   </button>
                 )

@@ -102,6 +102,10 @@ export const apiService = {
     return this.post("getUser", { email });
   },
 
+  async updateUser(email: string, userData: any) {
+    return this.post("updateUser", { email, userData });
+  },
+
   async deleteUser(userId: string) {
     return this.post("deleteUser", { userId });
   },

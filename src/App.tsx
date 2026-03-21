@@ -36,6 +36,19 @@ export default function App() {
   useEffect(() => {
     if (user) {
       localStorage.setItem('jvv-user', JSON.stringify(user));
+      
+      // Update checkoutData with user profile info if available
+      setCheckoutData(prev => ({
+        ...prev,
+        nome: user.name || prev.nome,
+        email: user.email || prev.email,
+        telefone: user.telefone || prev.telefone,
+        cpf: user.cpf || prev.cpf,
+        nascimento: user.nascimento || prev.nascimento,
+        cep: user.cep || prev.cep,
+        endereco: user.endereco || prev.endereco
+      }));
+
       // When user logs in, fetch their saved cart from the server if current cart is empty
       if (cart.length === 0) {
         apiService.getSavedCart(user.email).then(res => {
