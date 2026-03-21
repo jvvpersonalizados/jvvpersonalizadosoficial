@@ -117,16 +117,28 @@ app.get("/api/social-feed", async (req, res) => {
     console.log(`Scraping Pinterest: ${pinterestUrl}`);
     const response = await axios.get(pinterestUrl, {
       headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
         "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
         "Cache-Control": "no-cache",
-        "Pragma": "no-cache"
+        "Pragma": "no-cache",
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "none",
+        "Sec-Fetch-User": "?1",
+        "Upgrade-Insecure-Requests": "1"
       },
-      timeout: 10000
+      timeout: 15000,
+      maxRedirects: 5
     });
 
     const html = response.data;
+    console.log(`Pinterest response received. HTML length: ${html.length}`);
+    
+    if (html.includes('login') && html.length < 5000) {
+      console.log("Detected Pinterest login wall or redirect");
+    }
+
     const $ = cheerio.load(html);
     const posts: any[] = [];
 
@@ -206,11 +218,32 @@ app.get("/api/social-feed", async (req, res) => {
       console.log(`Found ${posts.length} posts after img scraping`);
     }
 
+    // 4. Global regex fallback for any pinimg URLs in the source
+    if (posts.length < 6) {
+      const pinimgRegex = /https:\/\/i\.pinimg\.com\/[^\s"']+\.(jpg|jpeg|png|webp)/g;
+      const matches = html.match(pinimgRegex) || [];
+      matches.forEach((match: string, i: number) => {
+        if (match.includes("/236x/") || match.includes("/474x/") || match.includes("/736x/")) {
+          const highRes = match.replace(/\/\d+x\//, "/736x/");
+          if (!posts.some(p => p.image === highRes)) {
+            posts.push({
+              id: `pin-global-regex-${i}`,
+              url: pinterestUrl,
+              image: highRes,
+              thumbnail: match,
+              caption: "JVV Personalizados"
+            });
+          }
+        }
+      });
+      console.log(`Found ${posts.length} posts after global regex fallback`);
+    }
+
     // Deduplicate by image URL
     const uniquePosts = Array.from(new Map(posts.map(p => [p.image, p])).values());
     
     if (uniquePosts.length > 0) {
-      return res.json({ success: true, posts: uniquePosts.slice(0, 18) });
+      return res.json({ success: true, posts: uniquePosts.slice(0, 6) });
     }
 
     console.log("No posts found, returning fallback");
