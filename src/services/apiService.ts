@@ -5,10 +5,15 @@ export interface ApiResponse {
 }
 
 export const apiService = {
+  getApiUrl(path: string) {
+    const baseUrl = (import.meta as any).env.VITE_API_URL || "";
+    return `${baseUrl}${path}`;
+  },
+
   async post(action: string, payload: any): Promise<ApiResponse> {
     try {
       // Use the local proxy to avoid CORS issues with Google Apps Script
-      const response = await fetch("/api/gas-proxy", {
+      const response = await fetch(this.getApiUrl("/api/gas-proxy"), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -46,7 +51,7 @@ export const apiService = {
 
   async syncCatalog() {
     try {
-      const response = await fetch("/api/sync-catalog");
+      const response = await fetch(this.getApiUrl("/api/sync-catalog"));
       return await response.json();
     } catch (error) {
       return { success: false, message: "Erro ao sincronizar catálogo." };

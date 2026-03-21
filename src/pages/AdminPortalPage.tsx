@@ -128,6 +128,29 @@ export const AdminPortalPage: React.FC<AdminPortalProps> = ({ t, formatPrice }) 
     if (res.success) fetchAdminData();
   };
 
+  const handleGeneratePost = async () => {
+    if (!promptIA) return;
+    setIsGenerating(true);
+    try {
+      // Use the store's API to generate and sync
+      const response = await fetch(apiService.getApiUrl("/api/generate-post"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: promptIA })
+      });
+      const res = await response.json();
+      if (res.success) {
+        alert(t("Produto gerado e publicado com sucesso!", "Product generated and published successfully!"));
+        setPromptIA('');
+        fetchAdminData();
+      }
+    } catch (err) {
+      alert("Erro ao gerar conteúdo.");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   const menuItems = [
     { id: 'dashboard', n: 'Dashboard', i: BarChart3 },
     { id: 'banners', n: 'Banners', i: ImageIcon },
@@ -424,6 +447,7 @@ export const AdminPortalPage: React.FC<AdminPortalProps> = ({ t, formatPrice }) 
                 className="w-full h-40 bg-black/50 border border-white/10 p-6 rounded-3xl text-sm outline-none focus:border-blue-500 mb-6 resize-none"
               />
               <button 
+                onClick={handleGeneratePost}
                 disabled={isGenerating}
                 className="w-full py-5 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-black uppercase italic rounded-2xl hover:opacity-90 transition-all shadow-xl flex items-center justify-center gap-3"
               >

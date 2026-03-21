@@ -1,22 +1,43 @@
 import express from "express";
 import path from "path";
 import axios from "axios";
+import cors from "cors";
 import * as cheerio from "cheerio";
 import { GoogleGenAI } from "@google/genai";
 
 const app = express();
 const PORT = 3000;
 
+// Allow CORS for the admin panel URLs provided by the user
+const allowedOrigins = [
+  "https://ais-dev-ckq2phdbklxo2fmeruj3lj-150071934317.us-west1.run.app",
+  "https://ais-pre-ckq2phdbklxo2fmeruj3lj-150071934317.us-west1.run.app",
+  "https://jvvstudio.vercel.app",
+  "https://jvvpersonalizadosoficial.vercel.app"
+];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin) || origin.includes("localhost") || origin.includes("run.app")) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  credentials: true
+}));
+
+app.use(express.json());
+
 // Lazy initialization of GenAI to prevent crash if API key is missing
 let genAI: any = null;
 const getGenAI = () => {
-  if (!genAI && process.env.GEMINI_API_KEY) {
-    genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  if (!genAI && (process.env.GEMINI_API_KEY || process.env.GOOGLE_MAPS_PLATFORM_KEY)) {
+    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_MAPS_PLATFORM_KEY;
+    genAI = new GoogleGenAI({ apiKey: apiKey as string });
   }
   return genAI;
 };
-
-app.use(express.json());
 
 // Health check / Ping endpoint
 app.get("/api/ping", (req, res) => {
@@ -50,7 +71,7 @@ app.post("/api/generate-post", async (req, res) => {
     const postData = JSON.parse(result.text || "{}");
     
     // Sync with GAS
-    const gasUrl = process.env.GAS_WEBAPP_URL || "https://script.google.com/macros/s/AKfycbzyspcbtaezKhIid7a4TKh4-I6TgLZzhi4LY5f0wpmp5H5LuVQonpj5aPchiMiN63IpVg/exec";
+    const gasUrl = process.env.GAS_WEBAPP_URL || "https://script.google.com/macros/s/AKfycbxyclb3PcrEgE-Al5kqsOci4rfiLBJ0v2NhwPki89XUVmRwwwkuqhMCpy9kFzxElA1viw/exec";
     const gasToken = process.env.GAS_API_TOKEN || "SEGREDO_GALÁCTICO_2026";
     
     await axios.post(gasUrl, {
@@ -193,7 +214,7 @@ app.get("/api/sync-catalog", async (req, res) => {
     // Deduplicate by name
     const uniqueProducts = Array.from(new Map(products.map(p => [p.name, p])).values());
 
-    const gasUrl = process.env.GAS_WEBAPP_URL || "https://script.google.com/macros/s/AKfycbzyspcbtaezKhIid7a4TKh4-I6TgLZzhi4LY5f0wpmp5H5LuVQonpj5aPchiMiN63IpVg/exec";
+    const gasUrl = process.env.GAS_WEBAPP_URL || "https://script.google.com/macros/s/AKfycbxyclb3PcrEgE-Al5kqsOci4rfiLBJ0v2NhwPki89XUVmRwwwkuqhMCpy9kFzxElA1viw/exec";
     const gasToken = process.env.GAS_API_TOKEN || "SEGREDO_GALÁCTICO_2026";
     
     await axios.post(gasUrl, {
@@ -212,7 +233,7 @@ app.get("/api/sync-catalog", async (req, res) => {
 // Proxy for Google Apps Script to avoid CORS issues
 app.post("/api/gas-proxy", async (req, res) => {
   try {
-    const gasUrl = process.env.GAS_WEBAPP_URL || "https://script.google.com/macros/s/AKfycbzyspcbtaezKhIid7a4TKh4-I6TgLZzhi4LY5f0wpmp5H5LuVQonpj5aPchiMiN63IpVg/exec";
+    const gasUrl = process.env.GAS_WEBAPP_URL || "https://script.google.com/macros/s/AKfycbxyclb3PcrEgE-Al5kqsOci4rfiLBJ0v2NhwPki89XUVmRwwwkuqhMCpy9kFzxElA1viw/exec";
     const gasToken = process.env.GAS_API_TOKEN || "SEGREDO_GALÁCTICO_2026";
     
     // Injetar o token de segurança no corpo da requisição
