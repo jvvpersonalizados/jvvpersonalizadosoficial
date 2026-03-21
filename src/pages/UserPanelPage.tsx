@@ -592,6 +592,13 @@ export const UserPanelPage: React.FC<UserPanelPageProps> = ({
             </div>
           </form>
         )}
+        
+        <div className="mt-12 pt-12 border-t border-white/5 flex items-center justify-center gap-2 opacity-40">
+          <div className="w-1.5 h-1.5 rounded-full bg-[#00ff88] animate-pulse"></div>
+          <span className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-400">
+            {t('Central Galáctica: Conectada', 'Galactic Center: Connected')}
+          </span>
+        </div>
       </div>
     </div>
   );
@@ -686,7 +693,13 @@ export const UserPanelPage: React.FC<UserPanelPageProps> = ({
           {activeTab === 'admin' && (
             <div className="bg-white/[0.02] border border-white/10 p-6 md:p-16 rounded-[40px] md:rounded-[60px] shadow-3xl animate-fade h-full">
               <div className="flex flex-col sm:flex-row justify-between items-center mb-10 md:mb-16 gap-6">
-                <h2 className="text-2xl md:text-3xl font-black italic uppercase tracking-tighter text-center md:text-left">{t('Painel', 'Panel')} <span className="text-[var(--theme-primary)]">{t('Administrativo', 'Administrative')}</span></h2>
+                <div className="flex flex-col gap-2">
+                  <h2 className="text-2xl md:text-3xl font-black italic uppercase tracking-tighter text-center md:text-left">{t('Painel', 'Panel')} <span className="text-[var(--theme-primary)]">{t('Administrativo', 'Administrative')}</span></h2>
+                  <div className="flex items-center gap-2 justify-center md:justify-start">
+                    <div className="w-2 h-2 rounded-full bg-[#00ff88] animate-pulse"></div>
+                    <span className="text-[9px] font-black uppercase text-[#00ff88] tracking-widest">{t('API Conectada', 'API Connected')}</span>
+                  </div>
+                </div>
                 <button 
                   onClick={async () => {
                     setIsLoading(true);

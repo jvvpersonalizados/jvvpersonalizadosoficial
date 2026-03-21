@@ -151,7 +151,17 @@ function getSystemStatus() {
 
 function doPost(e) {
   const configs = getConfigs();
-  const ss = SpreadsheetApp.openById(configs.spreadsheetId);
+  let ss;
+  try {
+    ss = SpreadsheetApp.openById(configs.spreadsheetId);
+  } catch (err) {
+    return response({ 
+      success: false, 
+      message: "Erro ao abrir a planilha. Verifique se o ID está correto e se o script tem permissão.",
+      error: err.message 
+    });
+  }
+  
   let data;
   try {
     data = JSON.parse(e.postData.contents);
