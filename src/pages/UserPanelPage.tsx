@@ -50,11 +50,12 @@ interface UserPanelPageProps {
   setCart: (cart: any[]) => void;
   catalog: any[];
   addToCart: (product: any) => void;
+  navigate: (page: string, data?: any, tag?: string) => void;
 }
 
 export const UserPanelPage: React.FC<UserPanelPageProps> = ({ 
   user, setUser, checkoutData, setCheckoutData, t, formatPrice, openReviewModal,
-  cart, setCart, catalog, addToCart
+  cart, setCart, catalog, addToCart, navigate
 }) => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [profilePic, setProfilePic] = useState<string | null>(null);
@@ -226,9 +227,9 @@ export const UserPanelPage: React.FC<UserPanelPageProps> = ({
     { id: 'settings', n: t('Perfil', 'Profile'), i: Settings },
     ...(user?.role === 'Admin' ? [{ id: 'admin', n: t('Admin', 'Admin'), i: ShieldIcon }] : []),
     { id: 'logout', n: t('Sair', 'Logout'), i: LogOut, action: () => {
-      setUser(null);
       localStorage.removeItem('jvv-user');
-      window.location.href = '/'; // Force redirect to home and clear state
+      setUser(null);
+      navigate('home');
     }}
   ];
 
@@ -750,7 +751,7 @@ export const UserPanelPage: React.FC<UserPanelPageProps> = ({
                   }}
                   className="w-full sm:w-auto flex items-center justify-center gap-2 md:gap-3 bg-[var(--theme-primary)] text-white px-8 md:px-10 py-3.5 md:py-4 rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl font-bold"
                 >
-                  <Shield size={14}/> {t('Configurar Planilha', 'Setup Spreadsheet')}
+                  <ShieldIcon size={14}/> {t('Configurar Planilha', 'Setup Spreadsheet')}
                 </button>
               </div>
               
@@ -782,7 +783,7 @@ export const UserPanelPage: React.FC<UserPanelPageProps> = ({
                       </tr>
                     </thead>
                     <tbody>
-                      {orders.slice(0, 5).map((o: any) => (
+                      {adminOrders.slice(0, 5).map((o: any) => (
                         <tr key={o.id} className="border-b border-white/5">
                           <td className="py-4 text-xs text-white font-bold">{o.id}</td>
                           <td className="py-4 text-xs text-slate-300">{o.user}</td>

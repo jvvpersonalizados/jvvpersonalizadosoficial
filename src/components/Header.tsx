@@ -11,7 +11,7 @@ interface HeaderProps {
   t: (br: any, int: any) => any;
 }
 
-export const Header: React.FC<HeaderProps> = ({ currentPage, selectedTag, navigate, cartCount, t }) => {
+export const Header: React.FC<HeaderProps> = ({ currentPage, selectedTag, navigate, cartCount, user, t }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const handleNav = (page: string, data?: any, tag?: string) => {
@@ -73,7 +73,9 @@ export const Header: React.FC<HeaderProps> = ({ currentPage, selectedTag, naviga
           <div className="flex items-center gap-2 md:gap-6">
             <button onClick={() => handleNav('user')} className="bg-white/5 border border-white/10 backdrop-blur-md px-4 py-2.5 md:px-6 md:py-3 rounded-full flex items-center gap-2 md:gap-3 hover:bg-white/15 transition-all group">
               <UserCircle size={16} className="text-[#00d2ff]" />
-              <span className="hidden sm:inline text-[9px] md:text-[10px] font-black uppercase tracking-widest leading-tight">{t('MINHA CONTA', 'MY ACCOUNT')}</span>
+              <span className="hidden sm:inline text-[9px] md:text-[10px] font-black uppercase tracking-widest leading-tight">
+                {user ? user.name.split(' ')[0].toUpperCase() : t('LOGIN', 'LOGIN')}
+              </span>
             </button>
             <button onClick={() => handleNav('checkout')} className="bg-purple-500/10 border border-purple-500/30 px-4 py-2.5 md:px-6 md:py-3 rounded-full flex items-center gap-3 md:gap-4 hover:bg-purple-500/20 transition-all text-white font-bold">
               <div className="relative"><ShoppingCart size={16} /><span className="absolute -top-2 -right-2 md:-right-3 bg-white text-black text-[8px] md:text-[9px] font-black w-3.5 h-3.5 md:w-4 md:h-4 rounded-full flex items-center justify-center">{cartCount}</span></div>

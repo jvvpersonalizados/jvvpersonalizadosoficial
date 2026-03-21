@@ -276,6 +276,11 @@ export const MobileLayout: React.FC<MobileLayoutProps> = ({
               formatPrice={formatPrice} 
               t={t} 
               openReviewModal={openReviewModal} 
+              cart={cart}
+              setCart={() => {}}
+              catalog={products}
+              addToCart={addToCart}
+              navigate={navigate}
             />
           </div>
         )}

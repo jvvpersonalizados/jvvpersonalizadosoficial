@@ -413,7 +413,7 @@ export default function App() {
           <main className="relative z-10 pt-10 md:pt-20">
             {currentPage === 'home' && <HomePage navigate={navigate} formatPrice={formatPrice} t={t} addToCart={addToCart} products={catalog} banners={banners} />}
             {currentPage === 'catalog' && <CatalogPage navigate={navigate} selectedTag={selectedTag} formatPrice={formatPrice} t={t} addToCart={addToCart} products={catalog} />}
-            {currentPage === 'user' && <UserPanelPage user={user} setUser={setUser} checkoutData={checkoutData} setCheckoutData={setCheckoutData} formatPrice={formatPrice} t={t} openReviewModal={() => setIsReviewModalOpen(true)} cart={cart} setCart={setCart} catalog={catalog} addToCart={addToCart} />}
+            {currentPage === 'user' && <UserPanelPage user={user} setUser={setUser} checkoutData={checkoutData} setCheckoutData={setCheckoutData} formatPrice={formatPrice} t={t} openReviewModal={() => setIsReviewModalOpen(true)} cart={cart} setCart={setCart} catalog={catalog} addToCart={addToCart} navigate={navigate} />}
             {currentPage === 'product' && <ProductPage selectedProduct={selectedProduct} navigate={navigate} goBack={goBack} addToCart={addToCart} formatPrice={formatPrice} t={t} openReviewModal={() => setIsReviewModalOpen(true)} addedReviews={addedReviews} canReview={canUserReviewProduct} user={user} />}
             {currentPage === 'reviews' && <ReviewsPage navigate={navigate} t={t} openReviewModal={() => setIsReviewModalOpen(true)} user={user} />}
             {currentPage === 'checkout' && 
