@@ -117,7 +117,7 @@ export const UserPanelPage: React.FC<UserPanelPageProps> = ({ user, setUser, che
           email: regEmail, 
           role: 'User', 
           thermometer: 'Morno', 
-          score: 'Bronze' 
+          score: '-' 
         });
       } else {
         setError(res.message || t('Erro ao criar conta.', 'Error creating account.'));
