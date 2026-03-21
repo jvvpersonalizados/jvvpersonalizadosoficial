@@ -987,24 +987,38 @@ export const UserPanelPage: React.FC<UserPanelPageProps> = ({
                               (p.id && String(p.id).trim() === String(fav.productId).trim()) || 
                               (p.name && String(p.name).trim().toLowerCase() === String(fav.productId).trim().toLowerCase())
                             );
-                            if (!product) return null;
+                            
+                            // If product not found, we still want to show the entry so it can be removed
+                            const displayProduct = product || {
+                              id: fav.productId,
+                              name: t('Produto não encontrado', 'Product not found') + ` (${fav.productId})`,
+                              price: 0,
+                              img: "https://images.unsplash.com/photo-1594322436404-5a0526db4d13?w=400&q=80"
+                            };
+
                             return (
-                              <div key={fav.productId} className="bg-white/5 border border-white/5 p-6 rounded-[30px] flex gap-6 items-center group hover:bg-white/[0.08] transition-all">
-                                <img src={product.img} alt={product.name} className="w-20 h-20 md:w-24 md:h-24 object-cover rounded-2xl shadow-xl" />
+                              <div key={`${fav.productId}-${folder}`} className="bg-white/5 border border-white/5 p-6 rounded-[30px] flex gap-6 items-center group hover:bg-white/[0.08] transition-all">
+                                <img src={displayProduct.img} alt={displayProduct.name} className="w-20 h-20 md:w-24 md:h-24 object-cover rounded-2xl shadow-xl" />
                                 <div className="flex-1">
-                                  <p className="text-xs md:text-sm font-black italic uppercase text-white mb-2 leading-tight">{product.name}</p>
-                                  <p className="text-lg font-black italic text-[var(--theme-primary)]">{formatPrice(product.price)}</p>
+                                  <p className="text-xs md:text-sm font-black italic uppercase text-white mb-2 leading-tight">{displayProduct.name}</p>
+                                  {displayProduct.price > 0 && (
+                                    <p className="text-lg font-black italic text-[var(--theme-primary)]">{formatPrice(displayProduct.price)}</p>
+                                  )}
                                 </div>
                                 <div className="flex flex-col gap-3">
-                                  <button 
-                                    onClick={() => addToCart(product)}
-                                    className="p-3 bg-white/5 border border-white/10 rounded-2xl text-white hover:bg-[var(--theme-primary)] hover:border-[var(--theme-primary)] transition-all shadow-lg"
-                                  >
-                                    <ShoppingCart size={18} />
-                                  </button>
+                                  {product && (
+                                    <button 
+                                      onClick={() => addToCart(product)}
+                                      className="p-3 bg-white/5 border border-white/10 rounded-2xl text-white hover:bg-[var(--theme-primary)] hover:border-[var(--theme-primary)] transition-all shadow-lg"
+                                      title={t('Adicionar ao Carrinho', 'Add to Cart')}
+                                    >
+                                      <ShoppingCart size={18} />
+                                    </button>
+                                  )}
                                   <button 
                                     onClick={() => handleRemoveFavorite(fav.productId, folder)}
-                                    className="p-3 bg-white/5 border border-white/10 rounded-2xl text-slate-500 hover:bg-rose-500 hover:text-white hover:border-rose-500 transition-all"
+                                    className="p-3 bg-white/5 border border-white/10 rounded-2xl text-rose-400 hover:bg-rose-500 hover:text-white hover:border-rose-500 transition-all"
+                                    title={t('Remover dos Favoritos', 'Remove from Favorites')}
                                   >
                                     <Trash2 size={18} />
                                   </button>
