@@ -126,7 +126,15 @@ export const apiService = {
     return this.post("deleteBanner", { bannerId });
   },
 
-  async forgotPassword(email: string) {
-    return this.post("forgotPassword", { email });
+  async getUserOrders(email: string) {
+    return this.post("getUserOrders", { email });
+  },
+
+  async requestPasswordReset(email: string) {
+    return this.post("requestPasswordReset", { email });
+  },
+
+  async resetPassword(email: string, code: string, newPass: string) {
+    return this.post("resetPassword", { email, code, newPass });
   }
 };

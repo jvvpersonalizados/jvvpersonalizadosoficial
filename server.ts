@@ -71,7 +71,7 @@ app.post("/api/generate-post", async (req, res) => {
     const postData = JSON.parse(result.text || "{}");
     
     // Sync with GAS
-    const gasUrl = process.env.GAS_WEBAPP_URL || "https://script.google.com/macros/s/AKfycbzKLQ7yTdZFkcpqOofn2oCWCcQ3cuIOE2EJG26XGE5Q1W4bpCdVkkQ0ImBTqOs3PoaMFA/exec";
+    const gasUrl = process.env.GAS_WEBAPP_URL || "https://script.google.com/macros/s/AKfycbzJLz5p7DRThV4xSsPPqI_RyMnpOwWs5afOBNIXlVlnw-ifZwsv1TiXgg60RrFoh5X-lA/exec";
     const gasToken = process.env.GAS_API_TOKEN || "SEGREDO_GALÁCTICO_2026";
     
     await axios.post(gasUrl, {
@@ -301,7 +301,7 @@ app.get("/api/sync-catalog", async (req, res) => {
     // Deduplicate by name
     const uniqueProducts = Array.from(new Map(products.map(p => [p.name, p])).values());
 
-    const gasUrl = process.env.GAS_WEBAPP_URL || "https://script.google.com/macros/s/AKfycbzKLQ7yTdZFkcpqOofn2oCWCcQ3cuIOE2EJG26XGE5Q1W4bpCdVkkQ0ImBTqOs3PoaMFA/exec";
+    const gasUrl = process.env.GAS_WEBAPP_URL || "https://script.google.com/macros/s/AKfycbzJLz5p7DRThV4xSsPPqI_RyMnpOwWs5afOBNIXlVlnw-ifZwsv1TiXgg60RrFoh5X-lA/exec";
     const gasToken = process.env.GAS_API_TOKEN || "SEGREDO_GALÁCTICO_2026";
     
     await axios.post(gasUrl, {
@@ -320,7 +320,7 @@ app.get("/api/sync-catalog", async (req, res) => {
 // Proxy for Google Apps Script to avoid CORS issues
 app.post("/api/gas-proxy", async (req, res) => {
   try {
-    const gasUrl = process.env.GAS_WEBAPP_URL || "https://script.google.com/macros/s/AKfycbzKLQ7yTdZFkcpqOofn2oCWCcQ3cuIOE2EJG26XGE5Q1W4bpCdVkkQ0ImBTqOs3PoaMFA/exec";
+    const gasUrl = process.env.GAS_WEBAPP_URL || "https://script.google.com/macros/s/AKfycbzJLz5p7DRThV4xSsPPqI_RyMnpOwWs5afOBNIXlVlnw-ifZwsv1TiXgg60RrFoh5X-lA/exec";
     const gasToken = process.env.GAS_API_TOKEN || "SEGREDO_GALÁCTICO_2026";
     
     // Injetar o token de segurança no corpo da requisição

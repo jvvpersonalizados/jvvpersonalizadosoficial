@@ -40,6 +40,53 @@ export const UserPanelPage: React.FC<UserPanelPageProps> = ({ user, setUser, che
   const [regEmail, setRegEmail] = useState('');
   const [regPass, setRegPass] = useState('');
 
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetCode, setResetCode] = useState('');
+  const [newPass, setNewPass] = useState('');
+
+  const handleRequestReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError(null);
+    try {
+      const res = await apiService.requestPasswordReset(resetEmail);
+      if (res.success) {
+        setIsResettingPassword(true);
+        alert(res.message || t('Código enviado!', 'Code sent!'));
+      } else {
+        setError(res.message || t('Erro ao solicitar redefinição.', 'Error requesting reset.'));
+      }
+    } catch (err) {
+      setError(t('Erro ao conectar com a galáxia.', 'Error connecting to the galaxy.'));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError(null);
+    try {
+      const res = await apiService.resetPassword(resetEmail, resetCode, newPass);
+      if (res.success) {
+        alert(res.message || t('Senha alterada!', 'Password changed!'));
+        setIsResettingPassword(false);
+        setResetEmail('');
+        setResetCode('');
+        setNewPass('');
+        setIsRegistering(false);
+      } else {
+        setError(res.message || t('Código inválido ou expirado.', 'Invalid or expired code.'));
+      }
+    } catch (err) {
+      setError(t('Erro ao conectar com a galáxia.', 'Error connecting to the galaxy.'));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -229,10 +276,9 @@ export const UserPanelPage: React.FC<UserPanelPageProps> = ({ user, setUser, che
     if (!user?.email) return;
     setIsLoading(true);
     try {
-      const res = await apiService.getOrders();
+      const res = await apiService.getUserOrders(user.email);
       if (res.success && Array.isArray(res.data)) {
-        const filtered = res.data.filter((o: any) => o.email === user.email);
-        setUserOrders(filtered);
+        setUserOrders(res.data);
       }
     } catch (err) {
       console.error("Error fetching user orders:", err);
@@ -294,7 +340,50 @@ export const UserPanelPage: React.FC<UserPanelPageProps> = ({ user, setUser, che
           </div>
         )}
 
-        {isRegistering ? (
+        {isResettingPassword ? (
+          <form onSubmit={handleResetPassword} className="space-y-4 md:space-y-6">
+            <p className="text-[10px] text-slate-400 uppercase tracking-widest mb-4">
+              {t('Insira o código enviado para', 'Enter the code sent to')} <br/>
+              <span className="text-white">{resetEmail}</span>
+            </p>
+            <div className="relative">
+              <ShieldIcon className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-600" size={18}/>
+              <input 
+                required
+                value={resetCode}
+                onChange={e => setResetCode(e.target.value)}
+                type="text" 
+                placeholder={t('CÓDIGO DE 6 DÍGITOS', '6-DIGIT CODE')} 
+                className="w-full bg-white/[0.03] border border-white/10 h-14 md:h-16 pl-14 pr-5 rounded-2xl outline-none focus:border-[var(--theme-primary)] text-white text-sm transition-all" 
+              />
+            </div>
+            <div className="relative">
+              <Lock className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-600" size={18}/>
+              <input 
+                required
+                value={newPass}
+                onChange={e => setNewPass(e.target.value)}
+                type="password" 
+                placeholder={t('NOVA SENHA', 'NEW PASSWORD')} 
+                className="w-full bg-white/[0.03] border border-white/10 h-14 md:h-16 pl-14 pr-5 rounded-2xl outline-none focus:border-[var(--theme-primary)] text-white text-sm transition-all" 
+              />
+            </div>
+            <button 
+              disabled={isLoading}
+              type="submit" 
+              className="w-full py-5 md:py-6 bg-[var(--theme-primary)] text-white font-black uppercase italic rounded-2xl md:rounded-3xl hover:opacity-90 transition-all shadow-2xl text-xs flex items-center justify-center gap-3"
+            >
+              {isLoading ? t('ALTERANDO...', 'CHANGING...') : t('Alterar Senha', 'Change Password')}
+            </button>
+            <button 
+              type="button"
+              onClick={() => setIsResettingPassword(false)}
+              className="text-[10px] font-black text-slate-500 uppercase tracking-widest hover:text-white transition-colors"
+            >
+              {t('Voltar ao Login', 'Back to Login')}
+            </button>
+          </form>
+        ) : isRegistering ? (
           <form onSubmit={handleRegister} className="space-y-4 md:space-y-6">
             <div className="relative">
               <UserCircle className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-600" size={18}/>
@@ -395,11 +484,11 @@ export const UserPanelPage: React.FC<UserPanelPageProps> = ({ user, setUser, che
               </button>
               <button 
                 type="button"
-                onClick={async () => {
+                onClick={() => {
                   const email = prompt(t("Digite seu e-mail para redefinir a senha:", "Enter your email to reset password:"));
                   if (email) {
-                    const res = await apiService.forgotPassword(email);
-                    alert(res.message);
+                    setResetEmail(email);
+                    handleRequestReset({ preventDefault: () => {} } as any);
                   }
                 }}
                 className="text-[10px] font-black text-slate-500 uppercase tracking-widest hover:text-white transition-colors"

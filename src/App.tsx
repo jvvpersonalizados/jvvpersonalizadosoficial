@@ -119,10 +119,9 @@ export default function App() {
     const fetchUserOrders = async () => {
       if (user?.email) {
         try {
-          const res = await apiService.getOrders();
+          const res = await apiService.getUserOrders(user.email);
           if (res.success && Array.isArray(res.data)) {
-            const filtered = res.data.filter((o: any) => o.user === user.email || o.email === user.email);
-            setUserOrders(filtered);
+            setUserOrders(res.data);
           }
         } catch (err) {
           console.error("Erro ao buscar pedidos do usuário:", err);
