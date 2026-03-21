@@ -71,8 +71,8 @@ app.post("/api/generate-post", async (req, res) => {
     const postData = JSON.parse(result.text || "{}");
     
     // Sync with GAS
-    const gasUrl = process.env.GAS_WEBAPP_URL || "https://script.google.com/macros/s/AKfycbzJLz5p7DRThV4xSsPPqI_RyMnpOwWs5afOBNIXlVlnw-ifZwsv1TiXgg60RrFoh5X-lA/exec";
-    const gasToken = process.env.GAS_API_TOKEN || "SEGREDO_GALÁCTICO_2026";
+    const gasUrl = process.env.GAS_WEBAPP_URL || "https://script.google.com/macros/s/AKfycbwphZBklibQRJghRhs9-eYleKbIx8mbDqWSZGxmSbapOTuDDA9sg7xkGRxETCQSAwjCvQ/exec";
+    const gasToken = process.env.GAS_API_TOKEN || "JVV_STORE_SECRET_2026";
     
     await axios.post(gasUrl, {
       action: "addProduct",
@@ -301,8 +301,8 @@ app.get("/api/sync-catalog", async (req, res) => {
     // Deduplicate by name
     const uniqueProducts = Array.from(new Map(products.map(p => [p.name, p])).values());
 
-    const gasUrl = process.env.GAS_WEBAPP_URL || "https://script.google.com/macros/s/AKfycbzJLz5p7DRThV4xSsPPqI_RyMnpOwWs5afOBNIXlVlnw-ifZwsv1TiXgg60RrFoh5X-lA/exec";
-    const gasToken = process.env.GAS_API_TOKEN || "SEGREDO_GALÁCTICO_2026";
+    const gasUrl = process.env.GAS_WEBAPP_URL || "https://script.google.com/macros/s/AKfycbwphZBklibQRJghRhs9-eYleKbIx8mbDqWSZGxmSbapOTuDDA9sg7xkGRxETCQSAwjCvQ/exec";
+    const gasToken = process.env.GAS_API_TOKEN || "JVV_STORE_SECRET_2026";
     
     await axios.post(gasUrl, {
       action: "syncCatalog",
@@ -320,8 +320,8 @@ app.get("/api/sync-catalog", async (req, res) => {
 // Proxy for Google Apps Script to avoid CORS issues
 app.post("/api/gas-proxy", async (req, res) => {
   try {
-    const gasUrl = process.env.GAS_WEBAPP_URL || "https://script.google.com/macros/s/AKfycbzJLz5p7DRThV4xSsPPqI_RyMnpOwWs5afOBNIXlVlnw-ifZwsv1TiXgg60RrFoh5X-lA/exec";
-    const gasToken = process.env.GAS_API_TOKEN || "SEGREDO_GALÁCTICO_2026";
+    const gasUrl = process.env.GAS_WEBAPP_URL || "https://script.google.com/macros/s/AKfycbwphZBklibQRJghRhs9-eYleKbIx8mbDqWSZGxmSbapOTuDDA9sg7xkGRxETCQSAwjCvQ/exec";
+    const gasToken = process.env.GAS_API_TOKEN || "JVV_STORE_SECRET_2026";
     
     // Injetar o token de segurança no corpo da requisição
     const bodyWithToken = { ...req.body, token: gasToken };

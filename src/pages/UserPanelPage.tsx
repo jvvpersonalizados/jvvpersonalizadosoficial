@@ -158,10 +158,10 @@ export const UserPanelPage: React.FC<UserPanelPageProps> = ({
     try {
       const res = await apiService.register({ name: regName, email: regEmail, pass: regPass });
       if (res.success) {
-        setUser({ 
+        setUser(res.data || { 
           name: regName, 
           email: regEmail, 
-          role: 'User', 
+          role: 'client', 
           thermometer: 'Morno', 
           score: '-' 
         });
@@ -679,6 +679,75 @@ export const UserPanelPage: React.FC<UserPanelPageProps> = ({
                     ))}
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'admin' && (
+            <div className="bg-white/[0.02] border border-white/10 p-6 md:p-16 rounded-[40px] md:rounded-[60px] shadow-3xl animate-fade h-full">
+              <div className="flex flex-col sm:flex-row justify-between items-center mb-10 md:mb-16 gap-6">
+                <h2 className="text-2xl md:text-3xl font-black italic uppercase tracking-tighter text-center md:text-left">{t('Painel', 'Panel')} <span className="text-[var(--theme-primary)]">{t('Administrativo', 'Administrative')}</span></h2>
+                <button 
+                  onClick={async () => {
+                    setIsLoading(true);
+                    try {
+                      const res = await apiService.post('setupSpreadsheet', {});
+                      alert(res.message || t('Planilha configurada!', 'Spreadsheet configured!'));
+                    } catch (e) {
+                      alert(t('Erro ao configurar planilha.', 'Error configuring spreadsheet.'));
+                    } finally {
+                      setIsLoading(false);
+                    }
+                  }}
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 md:gap-3 bg-[var(--theme-primary)] text-white px-8 md:px-10 py-3.5 md:py-4 rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl font-bold"
+                >
+                  <Shield size={14}/> {t('Configurar Planilha', 'Setup Spreadsheet')}
+                </button>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+                <div className="bg-white/5 p-6 rounded-3xl border border-white/5">
+                  <p className="text-[10px] font-black uppercase text-slate-500 mb-2">{t('Vendas Totais', 'Total Sales')}</p>
+                  <p className="text-2xl font-black text-[#00ff88]">{formatPrice(adminStats.totalRevenue || 0)}</p>
+                </div>
+                <div className="bg-white/5 p-6 rounded-3xl border border-white/5">
+                  <p className="text-[10px] font-black uppercase text-slate-500 mb-2">{t('Pedidos Pendentes', 'Pending Orders')}</p>
+                  <p className="text-2xl font-black text-yellow-400">{adminStats.pendingOrders || 0}</p>
+                </div>
+                <div className="bg-white/5 p-6 rounded-3xl border border-white/5">
+                  <p className="text-[10px] font-black uppercase text-slate-500 mb-2">{t('Novos Clientes', 'New Customers')}</p>
+                  <p className="text-2xl font-black text-blue-400">{adminStats.newUsers || 0}</p>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                <h3 className="text-sm font-black uppercase italic text-white mb-6">{t('Últimos Pedidos', 'Recent Orders')}</h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-white/10">
+                        <th className="pb-4 text-[10px] font-black uppercase text-slate-500">{t('ID', 'ID')}</th>
+                        <th className="pb-4 text-[10px] font-black uppercase text-slate-500">{t('Cliente', 'Customer')}</th>
+                        <th className="pb-4 text-[10px] font-black uppercase text-slate-500">{t('Total', 'Total')}</th>
+                        <th className="pb-4 text-[10px] font-black uppercase text-slate-500">{t('Status', 'Status')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {orders.slice(0, 5).map((o: any) => (
+                        <tr key={o.id} className="border-b border-white/5">
+                          <td className="py-4 text-xs text-white font-bold">{o.id}</td>
+                          <td className="py-4 text-xs text-slate-300">{o.user}</td>
+                          <td className="py-4 text-xs text-[#00ff88] font-black">{formatPrice(o.total)}</td>
+                          <td className="py-4">
+                            <span className="text-[9px] font-black uppercase px-3 py-1 bg-white/5 rounded-full text-slate-400">
+                              {o.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           )}

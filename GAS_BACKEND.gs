@@ -8,14 +8,14 @@
  * 2. Role até "Propriedades do script".
  * 3. Adicione as seguintes chaves e valores:
  *    - ID_DA_PLANILHA : 1n_9EfiJ5vFiwvf6Skjn-izQhhb_QULNhOAyymz5PuEk
- *    - API_TOKEN      : SEGREDO_GALÁCTICO_2026
+ *    - API_TOKEN      : JVV_STORE_SECRET_2026
  */
 
 function getConfigs() {
   const props = PropertiesService.getScriptProperties();
   return {
     spreadsheetId: props.getProperty('ID_DA_PLANILHA') || '1n_9EfiJ5vFiwvf6Skjn-izQhhb_QULNhOAyymz5PuEk',
-    apiToken: props.getProperty('API_TOKEN') || 'SEGREDO_GALÁCTICO_2026'
+    apiToken: props.getProperty('API_TOKEN') || 'JVV_STORE_SECRET_2026'
   };
 }
 
@@ -65,6 +65,15 @@ function setupSpreadsheet() {
       sheet.getRange("B4").setFormula('=COUNTIFS(\'Usuários\'!F:F, ">"&TODAY()-30)');
       sheet.getRange("B5").setFormula('=IF(B2>0, B2/COUNT(\'Pedidos\'!D:D), 0)');
       sheet.getRange("B6").setFormula('=COUNTIF(\'Catálogo\'!D:D, "<=0")');
+    }
+    if (name === "Configurações") {
+      const configData = sheet.getDataRange().getValues();
+      if (configData.length <= 1) {
+        sheet.appendRow(["NOME_LOJA", "JVV Store"]);
+        sheet.appendRow(["COR_PRIMARIA", "#9333ea"]);
+        sheet.appendRow(["WHATSAPP", "5511999999999"]);
+        sheet.appendRow(["FRETE_FIXO", "15.00"]);
+      }
     }
     sheet.autoResizeColumns(1, sheets[name].length);
   }
@@ -151,7 +160,7 @@ function doPost(e) {
 
   // Ponte de Conexão com a IA (Ações Administrativas)
   if (data.token !== configs.apiToken) {
-    logAction(ss, data.action || "Unknown", "Unauthorized", "Failed", "Token inválido");
+    logAction(ss, data.action || "Unknown", "Unauthorized", "Failed", "Token inválido. Recebido: " + (data.token || "vazio"));
     return response({ success: false, message: "Acesso não autorizado." });
   }
 
@@ -283,11 +292,21 @@ function saveOrder(ss, orderData) {
   return response({ success: true, message: "Pedido salvo!", orderId: id });
 }
 
+function getSafeSheet(ss, name) {
+  let sheet = ss.getSheetByName(name);
+  if (!sheet) {
+    setupSpreadsheet();
+    sheet = ss.getSheetByName(name);
+  }
+  return sheet;
+}
+
 function login(ss, email, pass) {
-  const sheet = ss.getSheetByName('Usuários');
+  const sheet = getSafeSheet(ss, 'Usuários');
+  if (!sheet) return response({ success: false, message: "Erro: Tabela 'Usuários' não encontrada. Execute o setup." });
   const data = sheet.getDataRange().getValues();
   for (let i = 1; i < data.length; i++) {
-    if (data[i][2].toString().toLowerCase() === email.toLowerCase() && data[i][3].toString() === pass.toString()) {
+    if (data[i][2] && data[i][2].toString().toLowerCase() === email.toLowerCase() && data[i][3] && data[i][3].toString() === pass.toString()) {
       return response({ success: true, data: { id: data[i][0], name: data[i][1], email: data[i][2], role: data[i][4] } });
     }
   }
@@ -295,20 +314,23 @@ function login(ss, email, pass) {
 }
 
 function register(ss, userData) {
-  const sheet = ss.getSheetByName('Usuários');
+  const sheet = getSafeSheet(ss, 'Usuários');
+  if (!sheet) return response({ success: false, message: "Erro: Tabela 'Usuários' não encontrada." });
   const data = sheet.getDataRange().getValues();
   for (let i = 1; i < data.length; i++) {
-    if (data[i][2].toString().toLowerCase() === userData.email.toLowerCase()) {
+    if (data[i][2] && data[i][2].toString().toLowerCase() === userData.email.toLowerCase()) {
       return response({ success: false, message: "E-mail já cadastrado." });
     }
   }
   const id = 'U' + Math.floor(Math.random() * 1000000);
-  sheet.appendRow([id, userData.name, userData.email, userData.pass, 'client', new Date()]);
-  return response({ success: true, data: { id, name: userData.name, email: userData.email, role: 'client' } });
+  const role = (userData.email.toLowerCase() === 'jvvpersonalizados@gmail.com') ? 'Admin' : 'client';
+  sheet.appendRow([id, userData.name, userData.email, userData.pass, role, new Date()]);
+  return response({ success: true, data: { id, name: userData.name, email: userData.email, role: role } });
 }
 
 function getCatalog(ss) {
-  const sheet = ss.getSheetByName('Catálogo');
+  const sheet = getSafeSheet(ss, 'Catálogo');
+  if (!sheet) return response({ success: true, data: [] });
   const data = sheet.getDataRange().getValues();
   const products = [];
   for (let i = 1; i < data.length; i++) {
@@ -328,7 +350,8 @@ function getCatalog(ss) {
 }
 
 function getOrders(ss) {
-  const sheet = ss.getSheetByName('Pedidos');
+  const sheet = getSafeSheet(ss, 'Pedidos');
+  if (!sheet) return response({ success: true, data: [] });
   const data = sheet.getDataRange().getValues();
   const orders = [];
   for (let i = 1; i < data.length; i++) {
@@ -430,7 +453,8 @@ function syncCatalog(ss, products) {
 }
 
 function getUsers(ss) {
-  const sheet = ss.getSheetByName('Usuários');
+  const sheet = getSafeSheet(ss, 'Usuários');
+  if (!sheet) return response({ success: true, data: [] });
   const data = sheet.getDataRange().getValues();
   const users = [];
   for (let i = 1; i < data.length; i++) {
@@ -440,7 +464,8 @@ function getUsers(ss) {
 }
 
 function getUser(ss, email) {
-  const sheet = ss.getSheetByName('Usuários');
+  const sheet = getSafeSheet(ss, 'Usuários');
+  if (!sheet) return response({ success: false, message: "Tabela não encontrada." });
   const data = sheet.getDataRange().getValues();
   for (let i = 1; i < data.length; i++) {
     if (data[i][2].toString().toLowerCase() === email.toLowerCase()) {
@@ -461,7 +486,8 @@ function getUser(ss, email) {
 }
 
 function getUserOrders(ss, email) {
-  const sheet = ss.getSheetByName('Pedidos');
+  const sheet = getSafeSheet(ss, 'Pedidos');
+  if (!sheet) return response({ success: true, data: [] });
   const data = sheet.getDataRange().getValues();
   const orders = [];
   for (let i = 1; i < data.length; i++) {
@@ -506,7 +532,8 @@ function deleteProduct(ss, productId) {
 }
 
 function getBanners(ss) {
-  const sheet = ss.getSheetByName('Banners');
+  const sheet = getSafeSheet(ss, 'Banners');
+  if (!sheet) return response({ success: true, data: [] });
   const data = sheet.getDataRange().getValues();
   const banners = [];
   for (let i = 1; i < data.length; i++) {
