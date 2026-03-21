@@ -36,10 +36,28 @@ export default function App() {
   useEffect(() => {
     if (user) {
       localStorage.setItem('jvv-user', JSON.stringify(user));
+      // When user logs in, fetch their saved cart from the server if current cart is empty
+      if (cart.length === 0) {
+        apiService.getSavedCart(user.email).then(res => {
+          if (res.success && res.data && res.data.length > 0) {
+            setCart(res.data);
+          }
+        });
+      }
     } else {
       localStorage.removeItem('jvv-user');
     }
   }, [user]);
+
+  // Sync cart with server when it changes (if logged in)
+  useEffect(() => {
+    if (user && cart.length > 0) {
+      const timer = setTimeout(() => {
+        apiService.syncCart(user.email, cart);
+      }, 2000); // Debounce sync by 2 seconds
+      return () => clearTimeout(timer);
+    }
+  }, [cart, user]);
 
   const [userOrders, setUserOrders] = useState<any[]>([]);
   const [checkoutData, setCheckoutData] = useState({
@@ -382,8 +400,8 @@ export default function App() {
           <main className="relative z-10 pt-10 md:pt-20">
             {currentPage === 'home' && <HomePage navigate={navigate} formatPrice={formatPrice} t={t} addToCart={addToCart} products={catalog} banners={banners} />}
             {currentPage === 'catalog' && <CatalogPage navigate={navigate} selectedTag={selectedTag} formatPrice={formatPrice} t={t} addToCart={addToCart} products={catalog} />}
-            {currentPage === 'user' && <UserPanelPage user={user} setUser={setUser} checkoutData={checkoutData} setCheckoutData={setCheckoutData} formatPrice={formatPrice} t={t} openReviewModal={() => setIsReviewModalOpen(true)} />}
-            {currentPage === 'product' && <ProductPage selectedProduct={selectedProduct} navigate={navigate} goBack={goBack} addToCart={addToCart} formatPrice={formatPrice} t={t} openReviewModal={() => setIsReviewModalOpen(true)} addedReviews={addedReviews} canReview={canUserReviewProduct} />}
+            {currentPage === 'user' && <UserPanelPage user={user} setUser={setUser} checkoutData={checkoutData} setCheckoutData={setCheckoutData} formatPrice={formatPrice} t={t} openReviewModal={() => setIsReviewModalOpen(true)} cart={cart} setCart={setCart} catalog={catalog} addToCart={addToCart} />}
+            {currentPage === 'product' && <ProductPage selectedProduct={selectedProduct} navigate={navigate} goBack={goBack} addToCart={addToCart} formatPrice={formatPrice} t={t} openReviewModal={() => setIsReviewModalOpen(true)} addedReviews={addedReviews} canReview={canUserReviewProduct} user={user} />}
             {currentPage === 'reviews' && <ReviewsPage navigate={navigate} t={t} openReviewModal={() => setIsReviewModalOpen(true)} user={user} />}
             {currentPage === 'checkout' && 
               <CheckoutPage 

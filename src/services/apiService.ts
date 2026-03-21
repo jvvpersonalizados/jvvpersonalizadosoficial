@@ -130,6 +130,26 @@ export const apiService = {
     return this.post("getUserOrders", { email });
   },
 
+  async syncCart(email: string, cart: any[]) {
+    return this.post("syncCart", { email, cart });
+  },
+
+  async getSavedCart(email: string) {
+    return this.post("getSavedCart", { email });
+  },
+
+  async addFavorite(email: string, productId: string, folder: string) {
+    return this.post("addFavorite", { email, productId, folder });
+  },
+
+  async getFavorites(email: string) {
+    return this.post("getFavorites", { email });
+  },
+
+  async removeFavorite(email: string, productId: string, folder: string) {
+    return this.post("removeFavorite", { email, productId, folder });
+  },
+
   async requestPasswordReset(email: string) {
     return this.post("requestPasswordReset", { email });
   },

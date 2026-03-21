@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { ChevronRight, Star, ZoomIn, Minus, Plus, CheckCircle, ArrowLeft } from 'lucide-react';
+import { ChevronRight, Star, ZoomIn, Minus, Plus, CheckCircle, ArrowLeft, Heart, FolderPlus, Check, X } from 'lucide-react';
 import { GoogleReviewsMarquee } from '../components/GoogleReviews';
 import { getProducts } from '../constants/products';
 import { Product, Review } from '../types';
+import { apiService } from '../services/apiService';
 
 interface ProductPageProps {
   selectedProduct: Product | null;
@@ -14,14 +15,22 @@ interface ProductPageProps {
   openReviewModal: () => void;
   addedReviews: Review[];
   canReview: (productName: string) => { can: boolean; reason: string };
+  user: any;
 }
 
-export const ProductPage: React.FC<ProductPageProps> = ({ selectedProduct, navigate, goBack, addToCart, formatPrice, t, openReviewModal, addedReviews, canReview }) => {
+export const ProductPage: React.FC<ProductPageProps> = ({ 
+  selectedProduct, navigate, goBack, addToCart, formatPrice, t, 
+  openReviewModal, addedReviews, canReview, user 
+}) => {
   const [quantity, setQuantity] = useState(1);
   const [selectedSize, setSelectedSize] = useState<string>('');
   const [zoom, setZoom] = useState({ x: 0, y: 0, active: false });
   const [activeImg, setActiveImg] = useState(0);
   const [added, setAdded] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [showFolderSelect, setShowFolderSelect] = useState(false);
+  const [selectedFolder, setSelectedFolder] = useState('Geral');
+  const [saved, setSaved] = useState(false);
 
   React.useEffect(() => {
     window.scrollTo(0, 0);
@@ -58,6 +67,27 @@ export const ProductPage: React.FC<ProductPageProps> = ({ selectedProduct, navig
     addToCart(product, quantity, selectedSize);
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);
+  };
+
+  const handleSaveFavorite = async () => {
+    if (!user) {
+      alert(t("Faça login para salvar favoritos!", "Log in to save favorites!"));
+      navigate('user');
+      return;
+    }
+    setIsSaving(true);
+    try {
+      const res = await apiService.addFavorite(user.email, product.id || product.name, selectedFolder);
+      if (res.success) {
+        setSaved(true);
+        setShowFolderSelect(false);
+        setTimeout(() => setSaved(false), 3000);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleBuyNow = () => {
@@ -159,6 +189,44 @@ export const ProductPage: React.FC<ProductPageProps> = ({ selectedProduct, navig
               <button onClick={handleAdd} className={`w-full py-5 md:py-7 font-black uppercase italic rounded-full transition-all tracking-widest text-[10px] md:text-xs ${added ? 'bg-[#00ff88] text-black shadow-[0_0_20px_rgba(0,255,136,0.3)]' : 'bg-white/5 border border-white/10 text-white hover:bg-white/10'}`}>
                 {added ? t('✓ ADICIONADO', '✓ ADDED') : t('ADICIONAR AO CARRINHO', 'ADD TO CART')}
               </button>
+            </div>
+
+            <div className="relative">
+              <button 
+                onClick={() => setShowFolderSelect(!showFolderSelect)}
+                className={`w-full py-4 md:py-5 flex items-center justify-center gap-3 font-black uppercase italic rounded-full transition-all tracking-widest text-[9px] md:text-[10px] border ${saved ? 'bg-rose-500/10 border-rose-500/30 text-rose-500' : 'bg-white/5 border-white/10 text-slate-400 hover:text-white hover:bg-white/10'}`}
+              >
+                <Heart size={16} className={saved ? 'fill-rose-500' : ''} />
+                {saved ? t('SALVO NOS FAVORITOS', 'SAVED TO FAVORITES') : t('SALVAR ONLINE', 'SAVE ONLINE')}
+              </button>
+
+              {showFolderSelect && (
+                <div className="absolute top-full left-0 right-0 mt-4 bg-[#1a1a1a] border border-white/10 rounded-3xl p-6 shadow-3xl z-50 animate-fade">
+                  <div className="flex justify-between items-center mb-4">
+                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">{t('Escolher Pasta:', 'Choose Folder:')}</span>
+                    <button onClick={() => setShowFolderSelect(false)} className="text-slate-500 hover:text-white"><X size={16}/></button>
+                  </div>
+                  <div className="space-y-2 mb-6">
+                    {['Geral', 'Desejos', 'Presentes', 'Projetos'].map(folder => (
+                      <button 
+                        key={folder}
+                        onClick={() => setSelectedFolder(folder)}
+                        className={`w-full p-3 rounded-xl text-left text-[10px] font-bold uppercase tracking-widest transition-all ${selectedFolder === folder ? 'bg-[var(--theme-primary)] text-white' : 'bg-white/5 text-slate-400 hover:bg-white/10'}`}
+                      >
+                        {folder}
+                      </button>
+                    ))}
+                  </div>
+                  <button 
+                    onClick={handleSaveFavorite}
+                    disabled={isSaving}
+                    className="w-full py-4 bg-[#00ff88] text-black font-black uppercase italic rounded-xl text-[10px] tracking-widest hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2"
+                  >
+                    {isSaving ? <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin"></div> : <Check size={16}/>}
+                    {t('CONFIRMAR SALVAMENTO', 'CONFIRM SAVE')}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>

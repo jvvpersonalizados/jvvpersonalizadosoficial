@@ -29,7 +29,9 @@ function setupSpreadsheet() {
     "Configurações": ["Chave", "Valor"],
     "Banners": ["ID", "Título", "Subtítulo", "Imagem", "Link", "Ativo", "Ordem"],
     "Logs": ["DataHora", "Ação", "Usuário", "Status", "Detalhes"],
-    "Dashboard": ["Métrica", "Valor", "Gráfico Auxiliar"]
+    "Dashboard": ["Métrica", "Valor", "Gráfico Auxiliar"],
+    "Carrinhos": ["Email", "Itens", "UltimaAtualizacao"],
+    "Favoritos": ["Email", "ProductId", "Pasta", "DataAdicao"]
   };
   
   for (let name in sheets) {
@@ -174,6 +176,11 @@ function doPost(e) {
       case 'updateBanner': res = updateBanner(ss, data.bannerId, data.banner); break;
       case 'deleteBanner': res = deleteBanner(ss, data.bannerId); break;
       case 'syncCatalog': res = syncCatalog(ss, data.products); break;
+      case 'syncCart': res = syncCart(ss, data.email, data.cart); break;
+      case 'getSavedCart': res = getSavedCart(ss, data.email); break;
+      case 'addFavorite': res = addFavorite(ss, data.email, data.productId, data.folder); break;
+      case 'getFavorites': res = getFavorites(ss, data.email); break;
+      case 'removeFavorite': res = removeFavorite(ss, data.email, data.productId, data.folder); break;
       case 'forgotPassword': res = forgotPassword(ss, data.email); break;
       case 'searchCatalog': res = searchCatalog(ss, data.query); break;
       case 'getSettings': res = getSettings(ss); break;
@@ -510,4 +517,89 @@ function deleteBanner(ss, bannerId) {
 
 function forgotPassword(ss, email) {
   return response({ success: true, message: "Instruções enviadas para o seu e-mail galáctico." });
+}
+
+// --- NOVAS FUNÇÕES DE CARRINHO E FAVORITOS ---
+
+function syncCart(ss, email, cart) {
+  const sheet = ss.getSheetByName('Carrinhos');
+  const data = sheet.getDataRange().getValues();
+  const cartJson = JSON.stringify(cart);
+  
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0].toString().toLowerCase() === email.toLowerCase()) {
+      sheet.getRange(i + 1, 2).setValue(cartJson);
+      sheet.getRange(i + 1, 3).setValue(new Date());
+      return response({ success: true, message: "Carrinho sincronizado!" });
+    }
+  }
+  
+  sheet.appendRow([email, cartJson, new Date()]);
+  return response({ success: true, message: "Carrinho salvo!" });
+}
+
+function getSavedCart(ss, email) {
+  const sheet = ss.getSheetByName('Carrinhos');
+  const data = sheet.getDataRange().getValues();
+  
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0].toString().toLowerCase() === email.toLowerCase()) {
+      try {
+        const cart = JSON.parse(data[i][1]);
+        return response({ success: true, data: cart });
+      } catch (e) {
+        return response({ success: false, message: "Erro ao ler carrinho salvo." });
+      }
+    }
+  }
+  return response({ success: true, data: [] });
+}
+
+function addFavorite(ss, email, productId, folder) {
+  const sheet = ss.getSheetByName('Favoritos');
+  const data = sheet.getDataRange().getValues();
+  
+  // Evitar duplicados na mesma pasta
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0].toString().toLowerCase() === email.toLowerCase() && 
+        data[i][1].toString() === productId.toString() && 
+        data[i][2] === folder) {
+      return response({ success: true, message: "Já está nos favoritos desta pasta." });
+    }
+  }
+  
+  sheet.appendRow([email, productId, folder, new Date()]);
+  return response({ success: true, message: "Adicionado aos favoritos!" });
+}
+
+function getFavorites(ss, email) {
+  const sheet = ss.getSheetByName('Favoritos');
+  const data = sheet.getDataRange().getValues();
+  const favorites = [];
+  
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0].toString().toLowerCase() === email.toLowerCase()) {
+      favorites.push({
+        productId: data[i][1],
+        folder: data[i][2],
+        addedAt: data[i][3]
+      });
+    }
+  }
+  return response({ success: true, data: favorites });
+}
+
+function removeFavorite(ss, email, productId, folder) {
+  const sheet = ss.getSheetByName('Favoritos');
+  const data = sheet.getDataRange().getValues();
+  
+  for (let i = data.length - 1; i >= 1; i--) {
+    if (data[i][0].toString().toLowerCase() === email.toLowerCase() && 
+        data[i][1].toString() === productId.toString() && 
+        data[i][2] === folder) {
+      sheet.deleteRow(i + 1);
+      return response({ success: true, message: "Removido dos favoritos!" });
+    }
+  }
+  return response({ success: false, message: "Favorito não encontrado." });
 }

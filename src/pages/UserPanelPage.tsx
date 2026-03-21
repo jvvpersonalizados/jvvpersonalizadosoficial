@@ -1,5 +1,40 @@
 import React, { useState, useRef } from 'react';
-import { Layout, Package, Settings, LogOut, UserCircle, Camera, Save, Truck, Mail, Lock, UserPlus, ArrowRight, ShieldIcon, Rocket, RefreshCw, ChevronRight, Clock, CheckCircle, AlertCircle } from 'lucide-react';
+import { 
+  Layout, 
+  Package, 
+  Settings, 
+  LogOut, 
+  UserCircle, 
+  Camera, 
+  Save, 
+  Truck, 
+  Mail, 
+  Lock, 
+  UserPlus, 
+  ArrowRight, 
+  ShieldIcon, 
+  Rocket, 
+  RefreshCw, 
+  ChevronRight, 
+  Clock, 
+  CheckCircle, 
+  AlertCircle,
+  Heart,
+  ShoppingCart,
+  FolderPlus,
+  Trash2,
+  Plus,
+  Check,
+  X,
+  Edit2,
+  Eye,
+  Search,
+  Filter,
+  Star,
+  MapPin,
+  Phone,
+  Calendar
+} from 'lucide-react';
 import { OrbitalLogo } from '../components/OrbitalLogo';
 import { apiService } from '../services/apiService';
 
@@ -11,13 +46,24 @@ interface UserPanelPageProps {
   t: (br: any, int: any) => any;
   formatPrice: (price: number) => string;
   openReviewModal: () => void;
+  cart: any[];
+  setCart: (cart: any[]) => void;
+  catalog: any[];
+  addToCart: (product: any) => void;
 }
 
-export const UserPanelPage: React.FC<UserPanelPageProps> = ({ user, setUser, checkoutData, setCheckoutData, t, formatPrice, openReviewModal }) => {
+export const UserPanelPage: React.FC<UserPanelPageProps> = ({ 
+  user, setUser, checkoutData, setCheckoutData, t, formatPrice, openReviewModal,
+  cart, setCart, catalog, addToCart
+}) => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [profilePic, setProfilePic] = useState<string | null>(null);
   const [showSaveMsg, setShowSaveMsg] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
+  const [favorites, setFavorites] = useState<any[]>([]);
+  const [favoriteFolders, setFavoriteFolders] = useState<string[]>(['Geral']);
+  const [newFolderName, setNewFolderName] = useState('');
+  const [isAddingFolder, setIsAddingFolder] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -153,6 +199,8 @@ export const UserPanelPage: React.FC<UserPanelPageProps> = ({ user, setUser, che
   const menuItems = [
     { id: 'dashboard', n: t('Dashboard', 'Dashboard'), i: Layout },
     { id: 'orders', n: t('Pedidos', 'Orders'), i: Package },
+    { id: 'favorites', n: t('Favoritos', 'Favorites'), i: Heart },
+    { id: 'cart', n: t('Carrinho', 'Cart'), i: ShoppingCart },
     { id: 'settings', n: t('Perfil', 'Profile'), i: Settings },
     ...(user?.role === 'Admin' ? [{ id: 'admin', n: t('Admin', 'Admin'), i: ShieldIcon }] : []),
     { id: 'logout', n: t('Sair', 'Logout'), i: LogOut }
@@ -294,12 +342,51 @@ export const UserPanelPage: React.FC<UserPanelPageProps> = ({ user, setUser, che
     }
   };
 
+  const fetchFavorites = async () => {
+    if (!user?.email) return;
+    setIsLoading(true);
+    try {
+      const res = await apiService.getFavorites(user.email);
+      if (res.success) {
+        setFavorites(res.data);
+        const folders = Array.from(new Set(res.data.map((f: any) => f.folder))) as string[];
+        if (!folders.includes('Geral')) folders.push('Geral');
+        setFavoriteFolders(folders);
+      }
+    } catch (err) {
+      console.error("Error fetching favorites:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRemoveFavorite = async (productId: string, folder: string) => {
+    try {
+      const res = await apiService.removeFavorite(user.email, productId, folder);
+      if (res.success) {
+        fetchFavorites();
+      }
+    } catch (err) {
+      console.error("Error removing favorite:", err);
+    }
+  };
+
+  const handleAddFolder = () => {
+    if (newFolderName.trim() && !favoriteFolders.includes(newFolderName.trim())) {
+      setFavoriteFolders([...favoriteFolders, newFolderName.trim()]);
+      setNewFolderName('');
+      setIsAddingFolder(false);
+    }
+  };
+
   React.useEffect(() => {
     if (user) {
       fetchUserData();
-      fetchUserOrders();
+      if (activeTab === 'orders') fetchUserOrders();
+      if (activeTab === 'favorites') fetchFavorites();
+      if (activeTab === 'admin') fetchAdminData();
     }
-  }, [user?.email]);
+  }, [user?.email, activeTab]);
 
   const handleAddBanner = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -652,6 +739,121 @@ export const UserPanelPage: React.FC<UserPanelPageProps> = ({ user, setUser, che
                   })
                 )}
               </div>
+            </div>
+          )}
+
+          {activeTab === 'favorites' && (
+            <div className="bg-white/[0.02] border border-white/10 p-6 md:p-16 rounded-[40px] md:rounded-[60px] shadow-3xl animate-fade h-full">
+              <div className="flex flex-col sm:flex-row justify-between items-center mb-10 md:mb-16 gap-6">
+                <h2 className="text-2xl md:text-3xl font-black italic uppercase tracking-tighter text-center md:text-left">{t('Meus', 'My')} <span className="text-[var(--theme-primary)]">{t('Favoritos', 'Favorites')}</span></h2>
+                <button 
+                  onClick={() => setIsAddingFolder(true)}
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 md:gap-3 bg-[var(--theme-primary)]/20 text-[var(--theme-primary)] border border-[var(--theme-primary)]/30 px-8 md:px-10 py-3.5 md:py-4 rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl font-bold"
+                >
+                  <FolderPlus size={14}/> {t('Nova Pasta', 'New Folder')}
+                </button>
+              </div>
+
+              {isAddingFolder && (
+                <div className="bg-white/5 border border-white/10 p-6 md:p-10 rounded-[30px] mb-10 animate-fade">
+                  <h3 className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-6">{t('Criar Nova Pasta', 'Create New Folder')}</h3>
+                  <div className="flex gap-3">
+                    <input 
+                      type="text" 
+                      value={newFolderName}
+                      onChange={(e) => setNewFolderName(e.target.value)}
+                      placeholder={t('Nome da pasta...', 'Folder name...')}
+                      className="flex-1 bg-white/[0.03] border border-white/10 p-4 rounded-xl outline-none focus:border-[var(--theme-primary)] text-white text-xs"
+                    />
+                    <button onClick={handleAddFolder} className="p-4 bg-[var(--theme-primary)] rounded-xl text-white shadow-lg"><Check size={20} /></button>
+                    <button onClick={() => setIsAddingFolder(false)} className="p-4 bg-white/10 rounded-xl text-white"><X size={20} /></button>
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-16">
+                {favoriteFolders.map(folder => {
+                  const folderItems = favorites.filter(f => f.folder === folder);
+                  return (
+                    <div key={folder} className="space-y-8">
+                      <div className="flex items-center gap-6">
+                        <div className="h-px flex-1 bg-white/10"></div>
+                        <h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-slate-500 italic">{folder}</h3>
+                        <div className="h-px flex-1 bg-white/10"></div>
+                      </div>
+
+                      {folderItems.length === 0 ? (
+                        <p className="text-center text-slate-600 text-[10px] uppercase font-black tracking-[0.2em] py-8">{t('Nenhum item nesta pasta.', 'No items in this folder.')}</p>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          {folderItems.map(fav => {
+                            const product = catalog.find(p => p.id === fav.productId);
+                            if (!product) return null;
+                            return (
+                              <div key={fav.productId} className="bg-white/5 border border-white/5 p-6 rounded-[30px] flex gap-6 items-center group hover:bg-white/[0.08] transition-all">
+                                <img src={product.image} alt={product.name} className="w-20 h-20 md:w-24 md:h-24 object-cover rounded-2xl shadow-xl" />
+                                <div className="flex-1">
+                                  <p className="text-xs md:text-sm font-black italic uppercase text-white mb-2 leading-tight">{product.name}</p>
+                                  <p className="text-lg font-black italic text-[var(--theme-primary)]">{formatPrice(product.price)}</p>
+                                </div>
+                                <div className="flex flex-col gap-3">
+                                  <button 
+                                    onClick={() => addToCart(product)}
+                                    className="p-3 bg-white/5 border border-white/10 rounded-2xl text-white hover:bg-[var(--theme-primary)] hover:border-[var(--theme-primary)] transition-all shadow-lg"
+                                  >
+                                    <ShoppingCart size={18} />
+                                  </button>
+                                  <button 
+                                    onClick={() => handleRemoveFavorite(fav.productId, folder)}
+                                    className="p-3 bg-white/5 border border-white/10 rounded-2xl text-slate-500 hover:bg-rose-500 hover:text-white hover:border-rose-500 transition-all"
+                                  >
+                                    <Trash2 size={18} />
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'cart' && (
+            <div className="bg-white/[0.02] border border-white/10 p-6 md:p-16 rounded-[40px] md:rounded-[60px] shadow-3xl animate-fade h-full">
+              <h2 className="text-2xl md:text-3xl font-black italic uppercase mb-8 md:mb-12 tracking-tighter text-center md:text-left">{t('Carrinho', 'Cart')} <span className="text-[var(--theme-primary)]">{t('Salvo Online', 'Saved Online')}</span></h2>
+              <p className="text-slate-400 text-[10px] md:text-xs uppercase font-black tracking-widest mb-12 leading-relaxed opacity-60">
+                {t('Seu carrinho é sincronizado automaticamente com nossa central galáctica. Assim, você pode continuar sua compra de qualquer dispositivo!', 'Your cart is automatically synced with our galactic center. This way, you can continue your purchase from any device!')}
+              </p>
+
+              {cart.length === 0 ? (
+                <div className="text-center py-20">
+                  <ShoppingCart size={64} className="mx-auto text-white/10 mb-6" />
+                  <p className="text-slate-500 font-bold uppercase tracking-widest">{t('Seu carrinho está vazio.', 'Your cart is empty.')}</p>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {cart.map((item) => (
+                    <div key={item.id} className="bg-white/5 border border-white/5 p-6 rounded-[30px] flex gap-6 items-center">
+                      <img src={item.image} alt={item.name} className="w-16 h-16 md:w-20 md:h-20 object-cover rounded-2xl shadow-lg" />
+                      <div className="flex-1">
+                        <p className="text-xs md:text-sm font-black italic uppercase text-white mb-2">{item.name}</p>
+                        <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{t('Quantidade', 'Quantity')}: {item.quantity}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-lg font-black italic text-[var(--theme-primary)]">{formatPrice(item.price * item.quantity)}</p>
+                      </div>
+                    </div>
+                  ))}
+                  <div className="pt-10 border-t border-white/5 flex justify-between items-center">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">{t('Total do Carrinho', 'Cart Total')}</span>
+                    <span className="text-2xl md:text-3xl font-black italic text-white">{formatPrice(cart.reduce((acc, item) => acc + (item.price * item.quantity), 0))}</span>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
