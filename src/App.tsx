@@ -126,13 +126,13 @@ export default function App() {
         const res = await apiService.getCatalog();
         // apiService.getCatalog() returns the array directly or an empty array
         if (Array.isArray(res) && res.length > 0) {
-          const mapped = res.map((p: any, i: number) => ({
-            id: 2000 + i,
+          const mapped = res.map((p: any) => ({
+            id: p.id,
             name: p.name,
             price: parseFloat(p.price) || 0,
-            img: p.image || "https://images.unsplash.com/photo-1517142089942-ba376ce32a2e?w=800&q=80",
+            img: p.img || "https://images.unsplash.com/photo-1517142089942-ba376ce32a2e?w=800&q=80",
             preview: p.preview || "",
-            category: 'Todos',
+            category: p.category || 'Todos',
             description: p.description || "",
             tags: p.tags || []
           }));

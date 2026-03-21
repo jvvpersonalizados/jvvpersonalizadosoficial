@@ -983,11 +983,11 @@ export const UserPanelPage: React.FC<UserPanelPageProps> = ({
                       ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           {folderItems.map(fav => {
-                            const product = catalog.find(p => p.id === fav.productId);
+                            const product = catalog.find(p => String(p.id) === String(fav.productId));
                             if (!product) return null;
                             return (
                               <div key={fav.productId} className="bg-white/5 border border-white/5 p-6 rounded-[30px] flex gap-6 items-center group hover:bg-white/[0.08] transition-all">
-                                <img src={product.image} alt={product.name} className="w-20 h-20 md:w-24 md:h-24 object-cover rounded-2xl shadow-xl" />
+                                <img src={product.img} alt={product.name} className="w-20 h-20 md:w-24 md:h-24 object-cover rounded-2xl shadow-xl" />
                                 <div className="flex-1">
                                   <p className="text-xs md:text-sm font-black italic uppercase text-white mb-2 leading-tight">{product.name}</p>
                                   <p className="text-lg font-black italic text-[var(--theme-primary)]">{formatPrice(product.price)}</p>

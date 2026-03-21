@@ -1,14 +1,16 @@
 export interface Product {
-  id: number;
+  id: string | number;
   name: string;
   price: number;
   img: string;
+  preview?: string;
   category?: string;
   description?: string;
   features?: string[];
   images?: string[];
   reviews?: any[];
   sizes?: string[];
+  tags?: string[];
   type?: 'clothing' | 'accessory' | 'other';
 }
 

@@ -75,16 +75,27 @@ export const ProductPage: React.FC<ProductPageProps> = ({
       navigate('user');
       return;
     }
+    
+    const productId = product.id || product.name;
+    if (!productId) {
+      alert(t("Erro: Produto inválido.", "Error: Invalid product."));
+      return;
+    }
+
     setIsSaving(true);
     try {
-      const res = await apiService.addFavorite(user.email, product.id || product.name, selectedFolder);
+      const res = await apiService.addFavorite(user.email, String(productId), selectedFolder);
       if (res.success) {
         setSaved(true);
         setShowFolderSelect(false);
+        alert(t("Produto salvo nos favoritos!", "Product saved to favorites!"));
         setTimeout(() => setSaved(false), 3000);
+      } else {
+        alert(t("Erro ao salvar favorito: ", "Error saving favorite: ") + res.message);
       }
     } catch (err) {
       console.error(err);
+      alert(t("Erro de conexão ao salvar favorito.", "Connection error while saving favorite."));
     } finally {
       setIsSaving(false);
     }

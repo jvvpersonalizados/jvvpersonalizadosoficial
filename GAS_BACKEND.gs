@@ -728,13 +728,19 @@ function getSavedCart(ss, email) {
 }
 
 function addFavorite(ss, email, productId, folder) {
-  const sheet = ss.getSheetByName('Favoritos');
+  let sheet = ss.getSheetByName('Favoritos');
+  if (!sheet) {
+    setupSpreadsheet();
+    sheet = ss.getSheetByName('Favoritos');
+  }
+  if (!sheet) return response({ success: false, message: "Sheet Favoritos not found" });
+  
   const data = sheet.getDataRange().getValues();
   
   // Evitar duplicados na mesma pasta
   for (let i = 1; i < data.length; i++) {
-    if (data[i][0].toString().toLowerCase() === email.toLowerCase() && 
-        data[i][1].toString() === productId.toString() && 
+    if (data[i][0] && data[i][0].toString().toLowerCase() === email.toLowerCase() && 
+        data[i][1] && data[i][1].toString() === productId.toString() && 
         data[i][2] === folder) {
       return response({ success: true, message: "Já está nos favoritos desta pasta." });
     }
@@ -745,12 +751,14 @@ function addFavorite(ss, email, productId, folder) {
 }
 
 function getFavorites(ss, email) {
-  const sheet = ss.getSheetByName('Favoritos');
+  let sheet = ss.getSheetByName('Favoritos');
+  if (!sheet) return response({ success: true, data: [] });
+  
   const data = sheet.getDataRange().getValues();
   const favorites = [];
   
   for (let i = 1; i < data.length; i++) {
-    if (data[i][0].toString().toLowerCase() === email.toLowerCase()) {
+    if (data[i][0] && data[i][0].toString().toLowerCase() === email.toLowerCase()) {
       favorites.push({
         productId: data[i][1],
         folder: data[i][2],
@@ -762,12 +770,14 @@ function getFavorites(ss, email) {
 }
 
 function removeFavorite(ss, email, productId, folder) {
-  const sheet = ss.getSheetByName('Favoritos');
+  let sheet = ss.getSheetByName('Favoritos');
+  if (!sheet) return response({ success: false, message: "Sheet Favoritos not found" });
+  
   const data = sheet.getDataRange().getValues();
   
   for (let i = data.length - 1; i >= 1; i--) {
-    if (data[i][0].toString().toLowerCase() === email.toLowerCase() && 
-        data[i][1].toString() === productId.toString() && 
+    if (data[i][0] && data[i][0].toString().toLowerCase() === email.toLowerCase() && 
+        data[i][1] && data[i][1].toString() === productId.toString() && 
         data[i][2] === folder) {
       sheet.deleteRow(i + 1);
       return response({ success: true, message: "Removido dos favoritos!" });
