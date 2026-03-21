@@ -289,6 +289,21 @@ export default function App() {
       return;
     }
 
+    const isCheckoutComplete = 
+      checkoutData.nome && 
+      checkoutData.telefone && 
+      checkoutData.email && 
+      checkoutData.cpf && 
+      checkoutData.nascimento && 
+      checkoutData.cep && 
+      checkoutData.endereco && 
+      checkoutData.numero;
+
+    if (!isCheckoutComplete) {
+      alert(t("Por favor, preencha todos os campos obrigatórios no formulário de checkout.", "Please fill in all required fields in the checkout form."));
+      return;
+    }
+
     setIsProcessing(true);
     try {
       // Save order to spreadsheet

@@ -439,6 +439,16 @@ export const UserPanelPage: React.FC<UserPanelPageProps> = ({
     }
   }, [user?.email, activeTab]);
 
+  // Polling for order updates
+  React.useEffect(() => {
+    if (user?.email && activeTab === 'orders') {
+      const interval = setInterval(() => {
+        fetchUserOrders();
+      }, 30000); // Poll every 30 seconds
+      return () => clearInterval(interval);
+    }
+  }, [user?.email, activeTab]);
+
   const handleAddBanner = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsAddingBanner(true);
@@ -860,11 +870,12 @@ export const UserPanelPage: React.FC<UserPanelPageProps> = ({
                       itemsParsed = [];
                     }
                     
-                    const progress = o.status === 'Entregue' ? 100 : 
-                                     o.status === 'Envio' ? 85 : 
-                                     o.status === 'Produção' ? 65 : 
-                                     o.status === 'Produção de Arte' ? 45 : 
-                                     o.status === 'Criação de Arte' ? 25 : 
+                    const s = o.status ? o.status.toLowerCase() : '';
+                    const progress = s === 'entregue' ? 100 : 
+                                     s === 'envio' ? 85 : 
+                                     s === 'produção' ? 65 : 
+                                     s === 'produção de arte' ? 45 : 
+                                     s === 'criação de arte' ? 25 : 
                                      10;
 
                     const isPersonalized = Array.isArray(itemsParsed) && itemsParsed.some((item: any) => {
@@ -885,13 +896,13 @@ export const UserPanelPage: React.FC<UserPanelPageProps> = ({
                             <p className="text-xs md:text-sm font-black text-[#00ff88] mt-1">{formatPrice(o.total)}</p>
                           </div>
                           <div className="flex flex-col items-start sm:items-end w-full sm:w-auto">
-                            <span className={`px-4 py-2 rounded-full border text-[8px] md:text-[9px] font-black uppercase tracking-widest ${o.status === 'Entregue' ? 'bg-[#00ff88]/10 text-[#00ff88] border-[#00ff88]/20' : 'bg-blue-500/10 text-blue-400 border-blue-500/20'}`}>
+                            <span className={`px-4 py-2 rounded-full border text-[8px] md:text-[9px] font-black uppercase tracking-widest ${s === 'entregue' ? 'bg-[#00ff88]/10 text-[#00ff88] border-[#00ff88]/20' : 'bg-blue-500/10 text-blue-400 border-blue-500/20'}`}>
                               {o.status}
                             </span>
                             <p className="text-[9px] md:text-[10px] font-bold text-slate-500 mt-2 md:mt-3">{new Date(o.date).toLocaleDateString()}</p>
                             
                             <div className="flex gap-2 mt-3 md:mt-4">
-                              {o.status === 'Criação de Arte' && isPersonalized && (
+                              {s === 'criação de arte' && isPersonalized && (
                                 <a 
                                   href={`https://wa.me/5517981270724?text=${encodeURIComponent(`Olá, vim alinhar sobre a arte do meu pedido: ${o.id}`)}`}
                                   target="_blank"
@@ -902,7 +913,7 @@ export const UserPanelPage: React.FC<UserPanelPageProps> = ({
                                 </a>
                               )}
                               
-                              {o.status === 'Entregue' && (
+                              {s === 'entregue' && (
                                 <button onClick={openReviewModal} className="bg-white/5 border border-white/10 px-4 py-2 rounded-full text-[8px] md:text-[9px] font-black uppercase tracking-widest text-white hover:bg-[var(--theme-primary)] transition-all flex items-center gap-2">
                                   <Truck size={10} className="text-yellow-400" /> {t('Avaliar', 'Review')}
                                 </button>
