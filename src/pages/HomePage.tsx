@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus } from 'lucide-react';
+import { Plus, Eye } from 'lucide-react';
 import { InstagramFeed } from '../components/InstagramFeed';
 import { GoogleReviewsMarquee } from '../components/GoogleReviews';
 import { getProducts } from '../constants/products';
@@ -91,7 +91,18 @@ export const HomePage: React.FC<HomePageProps> = ({ navigate, formatPrice, t, ad
               <h3 className="text-base md:text-lg font-black italic uppercase truncate text-slate-300 group-hover:text-white">{p.name}</h3>
               <div className="flex justify-between items-center mt-4 md:mt-6">
                 <span className="text-xl md:text-2xl font-black text-white italic">{formatPrice(p.price)}</span>
-                <button onClick={(e) => { e.stopPropagation(); addToCart(p, 1); }} className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-[var(--theme-primary)] transition-all text-white shrink-0"><Plus size={18}/></button>
+                <div className="flex gap-3">
+                  {p.preview && (
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); window.open(p.preview); }} 
+                      className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-blue-500 transition-all text-white shadow-lg shrink-0"
+                      title={t('Ver Preview', 'View Preview')}
+                    >
+                      <Eye size={18}/>
+                    </button>
+                  )}
+                  <button onClick={(e) => { e.stopPropagation(); addToCart(p, 1); }} className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-[var(--theme-primary)] transition-all text-white shrink-0"><Plus size={18}/></button>
+                </div>
               </div>
             </div>
           ))}

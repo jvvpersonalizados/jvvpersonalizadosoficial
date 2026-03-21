@@ -160,5 +160,9 @@ export const apiService = {
 
   async resetPassword(email: string, code: string, newPass: string) {
     return this.post("resetPassword", { email, code, newPass });
+  },
+  
+  async runSelfCorrection() {
+    return this.post("runSelfCorrection", {});
   }
 };

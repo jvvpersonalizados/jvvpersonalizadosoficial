@@ -33,7 +33,8 @@ import {
   Star,
   MapPin,
   Phone,
-  Calendar
+  Calendar,
+  MessageCircle
 } from 'lucide-react';
 import { OrbitalLogo } from '../components/OrbitalLogo';
 import { apiService } from '../services/apiService';
@@ -776,6 +777,22 @@ export const UserPanelPage: React.FC<UserPanelPageProps> = ({
                 >
                   <ShieldIcon size={14}/> {t('Configurar Planilha', 'Setup Spreadsheet')}
                 </button>
+                <button 
+                  onClick={async () => {
+                    setIsLoading(true);
+                    try {
+                      const res = await apiService.runSelfCorrection();
+                      alert(res.message || t('Auto-correção concluída!', 'Self-correction completed!'));
+                    } catch (e) {
+                      alert(t('Erro ao executar auto-correção.', 'Error executing self-correction.'));
+                    } finally {
+                      setIsLoading(false);
+                    }
+                  }}
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 md:gap-3 bg-white/5 border border-white/10 text-white px-8 md:px-10 py-3.5 md:py-4 rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all shadow-xl font-bold"
+                >
+                  <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''}/> {t('Auto-Correção', 'Self-Correction')}
+                </button>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
@@ -843,7 +860,19 @@ export const UserPanelPage: React.FC<UserPanelPageProps> = ({
                       itemsParsed = [];
                     }
                     
-                    const progress = o.status === 'Entregue' ? 100 : o.status === 'Enviado' ? 85 : o.status === 'Em Produção' ? 50 : 15;
+                    const progress = o.status === 'Entregue' ? 100 : 
+                                     o.status === 'Envio' ? 85 : 
+                                     o.status === 'Produção' ? 65 : 
+                                     o.status === 'Produção de Arte' ? 45 : 
+                                     o.status === 'Criação de Arte' ? 25 : 
+                                     10;
+
+                    const isPersonalized = Array.isArray(itemsParsed) && itemsParsed.some((item: any) => {
+                      if (item.tags && Array.isArray(item.tags)) {
+                        return item.tags.some((tag: string) => tag.toLowerCase().includes('personalizado'));
+                      }
+                      return false;
+                    });
 
                     return (
                       <div key={o.id} className="bg-white/5 border border-white/5 p-6 md:p-10 rounded-[30px] md:rounded-[40px] relative overflow-hidden group hover:bg-white/[0.08] transition-all">
@@ -860,11 +889,25 @@ export const UserPanelPage: React.FC<UserPanelPageProps> = ({
                               {o.status}
                             </span>
                             <p className="text-[9px] md:text-[10px] font-bold text-slate-500 mt-2 md:mt-3">{new Date(o.date).toLocaleDateString()}</p>
-                            {o.status === 'Entregue' && (
-                              <button onClick={openReviewModal} className="mt-3 md:mt-4 bg-white/5 border border-white/10 px-4 py-2 rounded-full text-[8px] md:text-[9px] font-black uppercase tracking-widest text-white hover:bg-[var(--theme-primary)] transition-all flex items-center gap-2">
-                                <Truck size={10} className="text-yellow-400" /> {t('Avaliar', 'Review')}
-                              </button>
-                            )}
+                            
+                            <div className="flex gap-2 mt-3 md:mt-4">
+                              {o.status === 'Criação de Arte' && isPersonalized && (
+                                <a 
+                                  href={`https://wa.me/5517981270724?text=${encodeURIComponent(`Olá, vim alinhar sobre a arte do meu pedido: ${o.id}`)}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="bg-[#25D366]/10 border border-[#25D366]/20 px-4 py-2 rounded-full text-[8px] md:text-[9px] font-black uppercase tracking-widest text-[#25D366] hover:bg-[#25D366] hover:text-white transition-all flex items-center gap-2"
+                                >
+                                  <MessageCircle size={10} /> {t('Falar com Designer', 'Talk to Designer')}
+                                </a>
+                              )}
+                              
+                              {o.status === 'Entregue' && (
+                                <button onClick={openReviewModal} className="bg-white/5 border border-white/10 px-4 py-2 rounded-full text-[8px] md:text-[9px] font-black uppercase tracking-widest text-white hover:bg-[var(--theme-primary)] transition-all flex items-center gap-2">
+                                  <Truck size={10} className="text-yellow-400" /> {t('Avaliar', 'Review')}
+                                </button>
+                              )}
+                            </div>
                           </div>
                         </div>
                         <div className="space-y-3 md:space-y-4">
@@ -990,9 +1033,17 @@ export const UserPanelPage: React.FC<UserPanelPageProps> = ({
                       </div>
                     </div>
                   ))}
-                  <div className="pt-10 border-t border-white/5 flex justify-between items-center">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">{t('Total do Carrinho', 'Cart Total')}</span>
-                    <span className="text-2xl md:text-3xl font-black italic text-white">{formatPrice(cart.reduce((acc, item) => acc + (item.price * item.quantity), 0))}</span>
+                  <div className="pt-10 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-6">
+                    <div className="flex justify-between w-full md:w-auto md:gap-10 items-center">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">{t('Total do Carrinho', 'Cart Total')}</span>
+                      <span className="text-2xl md:text-3xl font-black italic text-white">{formatPrice(cart.reduce((acc, item) => acc + (item.price * item.quantity), 0))}</span>
+                    </div>
+                    <button 
+                      onClick={() => navigate('checkout')}
+                      className="w-full md:w-auto bg-[var(--theme-primary)] text-white px-10 py-4 rounded-full text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl"
+                    >
+                      {t('Conferir Carrinho', 'Check Cart')}
+                    </button>
                   </div>
                 </div>
               )}

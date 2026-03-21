@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronRight, Star, ZoomIn, Minus, Plus, CheckCircle, ArrowLeft, Heart, FolderPlus, Check, X } from 'lucide-react';
+import { ChevronRight, Star, ZoomIn, Minus, Plus, CheckCircle, ArrowLeft, Heart, FolderPlus, Check, X, Eye } from 'lucide-react';
 import { GoogleReviewsMarquee } from '../components/GoogleReviews';
 import { getProducts } from '../constants/products';
 import { Product, Review } from '../types';
@@ -190,6 +190,16 @@ export const ProductPage: React.FC<ProductPageProps> = ({
                 {added ? t('✓ ADICIONADO', '✓ ADDED') : t('ADICIONAR AO CARRINHO', 'ADD TO CART')}
               </button>
             </div>
+
+            {product.preview && (
+              <button 
+                onClick={() => window.open(product.preview)}
+                className="w-full py-4 md:py-5 flex items-center justify-center gap-3 bg-blue-500/10 border border-blue-500/20 text-blue-400 font-black uppercase italic rounded-full hover:bg-blue-500 hover:text-white transition-all tracking-widest text-[9px] md:text-[10px]"
+              >
+                <Eye size={16} />
+                {t('VER PREVIEW DO PRODUTO', 'VIEW PRODUCT PREVIEW')}
+              </button>
+            )}
 
             <div className="relative">
               <button 

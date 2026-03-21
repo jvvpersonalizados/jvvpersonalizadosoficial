@@ -49,7 +49,7 @@ function setupSpreadsheet() {
     
     if (name === "Pedidos") {
       const statusRange = sheet.getRange(2, 5, 999, 1);
-      const rule = SpreadsheetApp.newDataValidation().requireValueInList(['Pendente', 'Em Produção', 'Enviado', 'Entregue'], true).build();
+      const rule = SpreadsheetApp.newDataValidation().requireValueInList(['Pagamento em Aprovação', 'Criação de Arte', 'Produção de Arte', 'Produção', 'Envio', 'Entregue'], true).build();
       statusRange.setDataValidation(rule);
       sheet.getRange(2, 4, 999, 1).setNumberFormat('R$ #,##0.00');
     }
@@ -60,9 +60,9 @@ function setupSpreadsheet() {
     }
 
     if (name === "Dashboard") {
-      sheet.getRange("A2:A6").setValues([["Total de Vendas"], ["Pedidos Pendentes"], ["Novos Clientes (30 dias)"], ["Ticket Médio"], ["Produtos Sem Estoque"]]);
+      sheet.getRange("A2:A6").setValues([["Total de Vendas"], ["Pedidos em Processamento"], ["Novos Clientes (30 dias)"], ["Ticket Médio"], ["Produtos Sem Estoque"]]);
       sheet.getRange("B2").setFormula('=SUM(\'Pedidos\'!D:D)');
-      sheet.getRange("B3").setFormula('=COUNTIF(\'Pedidos\'!E:E, "Pendente")');
+      sheet.getRange("B3").setFormula('=COUNTIFS(\'Pedidos\'!E:E, "<>Entregue", \'Pedidos\'!E:E, "<>")');
       sheet.getRange("B4").setFormula('=COUNTIFS(\'Usuários\'!F:F, ">"&TODAY()-30)');
       sheet.getRange("B5").setFormula('=IF(B2>0, B2/COUNT(\'Pedidos\'!D:D), 0)');
       sheet.getRange("B6").setFormula('=COUNTIF(\'Catálogo\'!D:D, "<=0")');
@@ -221,6 +221,7 @@ function doPost(e) {
         res = response({ success: true, data: allData });
         break;
       case 'ai_fix': res = response({ success: true, message: runSelfCorrection() }); break;
+      case 'runSelfCorrection': res = response({ success: true, message: runSelfCorrection() }); break;
       case 'remote_config': 
         if (data.key && data.value) {
           PropertiesService.getScriptProperties().setProperty(data.key, data.value);
@@ -297,8 +298,11 @@ function updateOrderStatus(ss, orderId, status) {
   const sheet = ss.getSheetByName('Pedidos');
   const data = sheet.getDataRange().getValues();
   let progress = 10;
-  if (status === 'Em Produção') progress = 40;
-  if (status === 'Enviado') progress = 80;
+  if (status === 'Pagamento em Aprovação') progress = 10;
+  if (status === 'Criação de Arte') progress = 25;
+  if (status === 'Produção de Arte') progress = 45;
+  if (status === 'Produção') progress = 65;
+  if (status === 'Envio') progress = 85;
   if (status === 'Entregue') progress = 100;
 
   for (let i = 1; i < data.length; i++) {
@@ -316,7 +320,21 @@ function saveOrder(ss, orderData) {
   const catalogSheet = ss.getSheetByName('Catálogo');
   const id = 'ORD' + Math.floor(Math.random() * 1000000);
   
-  sheet.appendRow([id, orderData.nome, orderData.email, orderData.total, 'Pendente', JSON.stringify(orderData.items), new Date().toLocaleDateString(), 10]);
+  // Check if any item is personalized
+  let isPersonalized = false;
+  if (orderData.items && Array.isArray(orderData.items)) {
+    isPersonalized = orderData.items.some(item => {
+      if (item.tags && Array.isArray(item.tags)) {
+        return item.tags.some(tag => tag.toLowerCase().includes('personalizado'));
+      }
+      return false;
+    });
+  }
+
+  const initialStatus = 'Pagamento em Aprovação';
+  const initialProgress = 10;
+  
+  sheet.appendRow([id, orderData.nome, orderData.email, orderData.total, initialStatus, JSON.stringify(orderData.items), new Date().toLocaleDateString(), initialProgress]);
   
   if (orderData.items && Array.isArray(orderData.items)) {
     const catalogData = catalogSheet.getDataRange().getValues();
@@ -378,6 +396,8 @@ function login(ss, email, pass) {
         nascimento: data[i][8],
         cep: data[i][9],
         endereco: data[i][10],
+        thermometer: data[i][11] || 'Morno',
+        score: data[i][12] || 'Bronze',
         photo: data[i][13] || ''
       } });
     }
@@ -414,6 +434,7 @@ function getCatalog(ss) {
       price: parseFloat(data[i][2] || 0),
       stock: parseInt(data[i][3] || 0),
       img: data[i][4],
+      preview: data[i][5] || '',
       description: data[i][6] || '',
       category: data[i][7] || 'Geral',
       tags: data[i][8] ? data[i][8].toString().split(',') : []

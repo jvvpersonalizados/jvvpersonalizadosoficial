@@ -131,8 +131,10 @@ export default function App() {
             name: p.name,
             price: parseFloat(p.price) || 0,
             img: p.image || "https://images.unsplash.com/photo-1517142089942-ba376ce32a2e?w=800&q=80",
+            preview: p.preview || "",
             category: 'Todos',
-            description: p.description || ""
+            description: p.description || "",
+            tags: p.tags || []
           }));
           setCatalog(mapped);
         }
@@ -291,8 +293,9 @@ export default function App() {
     try {
       // Save order to spreadsheet
       const orderData = {
-        user: user?.email || checkoutData.email,
-        items: cart.map(i => i.name).join(', '),
+        nome: checkoutData.nome,
+        email: user?.email || checkoutData.email,
+        items: cart.map(i => ({ id: i.id, name: i.name, price: i.price, quantity: i.quantity, tags: i.tags })),
         total: totalGeral,
         payment: paymentMethod,
         address: `${checkoutData.endereco}, ${checkoutData.numero} - ${checkoutData.cep}`

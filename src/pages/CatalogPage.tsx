@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { SlidersHorizontal, Search, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
+import { SlidersHorizontal, Search, Plus, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
 import { getProducts } from '../constants/products';
 import { Product } from '../types';
 import { apiService } from '../services/apiService';
@@ -75,7 +75,18 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({ navigate, selectedTag,
                 <h3 className="text-[9px] md:text-[11px] font-bold uppercase truncate text-slate-300">{p.name}</h3>
                 <div className="flex justify-between items-center mt-3 md:mt-4">
                   <p className="text-xs md:text-sm font-black text-white">{formatPrice(p.price)}</p>
-                  <button onClick={(e) => { e.stopPropagation(); addToCart(p, 1); }} className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-[var(--theme-primary)] text-white shadow-lg shrink-0"><Plus size={14}/></button>
+                  <div className="flex gap-2">
+                    {p.preview && (
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); window.open(p.preview); }} 
+                        className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-blue-500 text-white shadow-lg shrink-0 transition-all"
+                        title={t('Ver Preview', 'View Preview')}
+                      >
+                        <Eye size={14}/>
+                      </button>
+                    )}
+                    <button onClick={(e) => { e.stopPropagation(); addToCart(p, 1); }} className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-white/5 flex items-center justify-center hover:bg-[var(--theme-primary)] text-white shadow-lg shrink-0 transition-all"><Plus size={14}/></button>
+                  </div>
                 </div>
               </div>
             ))}
