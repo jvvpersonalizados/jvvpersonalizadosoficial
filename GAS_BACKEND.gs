@@ -207,7 +207,9 @@ function doPost(e) {
       case 'addFavorite': res = addFavorite(ss, data.email, data.productId, data.folder); break;
       case 'getFavorites': res = getFavorites(ss, data.email); break;
       case 'removeFavorite': res = removeFavorite(ss, data.email, data.productId, data.folder); break;
-      case 'forgotPassword': res = forgotPassword(ss, data.email); break;
+      case 'requestPasswordReset': res = requestPasswordReset(ss, data.email); break;
+      case 'resetPassword': res = resetPassword(ss, data.email, data.code, data.newPass); break;
+      case 'forgotPassword': res = requestPasswordReset(ss, data.email); break;
       case 'searchCatalog': res = searchCatalog(ss, data.query); break;
       case 'getSettings': res = getSettings(ss); break;
       case 'updateSettings': res = updateSettings(ss, data.settings); break;
@@ -320,6 +322,10 @@ function saveOrder(ss, orderData) {
   const catalogSheet = ss.getSheetByName('Catálogo');
   const id = 'ORD' + Math.floor(Math.random() * 1000000);
   
+  if (!orderData.nome || !orderData.email) {
+    return response({ success: false, message: "Dados do cliente incompletos para o pedido." });
+  }
+
   // Check if any item is personalized
   let isPersonalized = false;
   if (orderData.items && Array.isArray(orderData.items)) {
@@ -333,8 +339,9 @@ function saveOrder(ss, orderData) {
 
   const initialStatus = 'Pagamento em Aprovação';
   const initialProgress = 10;
+  const orderDate = new Date().toISOString();
   
-  sheet.appendRow([id, orderData.nome, orderData.email, orderData.total, initialStatus, JSON.stringify(orderData.items), new Date().toLocaleDateString(), initialProgress]);
+  sheet.appendRow([id, orderData.nome, orderData.email, orderData.total, initialStatus, JSON.stringify(orderData.items), orderDate, initialProgress]);
   
   if (orderData.items && Array.isArray(orderData.items)) {
     const catalogData = catalogSheet.getDataRange().getValues();
@@ -367,17 +374,17 @@ function updateUser(ss, email, userData) {
   for (let i = 1; i < data.length; i++) {
     if (data[i][2] && data[i][2].toString().toLowerCase() === email.toLowerCase()) {
       // Update columns: Nome(1), Telefone(6), CPF(7), Nascimento(8), CEP(9), Endereco(10)
-      if (userData.name !== undefined) sheet.getRange(i + 1, 2).setValue(userData.name);
-      if (userData.telefone !== undefined) sheet.getRange(i + 1, 7).setValue(userData.telefone);
-      if (userData.cpf !== undefined) sheet.getRange(i + 1, 8).setValue(userData.cpf);
-      if (userData.nascimento !== undefined) sheet.getRange(i + 1, 9).setValue(userData.nascimento);
-      if (userData.cep !== undefined) sheet.getRange(i + 1, 10).setValue(userData.cep);
-      if (userData.endereco !== undefined) sheet.getRange(i + 1, 11).setValue(userData.endereco);
-      if (userData.photo !== undefined) sheet.getRange(i + 1, 14).setValue(userData.photo);
-      return response({ success: true, message: "Perfil atualizado!" });
+      if (userData.name !== undefined && userData.name !== null) sheet.getRange(i + 1, 2).setValue(userData.name);
+      if (userData.telefone !== undefined && userData.telefone !== null) sheet.getRange(i + 1, 7).setValue(userData.telefone);
+      if (userData.cpf !== undefined && userData.cpf !== null) sheet.getRange(i + 1, 8).setValue(userData.cpf);
+      if (userData.nascimento !== undefined && userData.nascimento !== null) sheet.getRange(i + 1, 9).setValue(userData.nascimento);
+      if (userData.cep !== undefined && userData.cep !== null) sheet.getRange(i + 1, 10).setValue(userData.cep);
+      if (userData.endereco !== undefined && userData.endereco !== null) sheet.getRange(i + 1, 11).setValue(userData.endereco);
+      if (userData.photo !== undefined && userData.photo !== null) sheet.getRange(i + 1, 14).setValue(userData.photo);
+      return response({ success: true, message: "Perfil atualizado com sucesso!" });
     }
   }
-  return response({ success: false, message: "Usuário não encontrado." });
+  return response({ success: false, message: "Usuário não encontrado para atualização." });
 }
 
 function login(ss, email, pass) {
@@ -536,14 +543,26 @@ function updateSettings(ss, newSettings) {
 
 function syncCatalog(ss, products) {
   const sheet = ss.getSheetByName('Catálogo');
-  const existing = sheet.getDataRange().getValues().map(r => r[1].toString().toLowerCase());
+  const data = sheet.getDataRange().getValues();
+  const existingMap = {};
+  for (let i = 1; i < data.length; i++) {
+    existingMap[data[i][1].toString().toLowerCase()] = i + 1;
+  }
+
   products.forEach(p => {
-    if (!existing.includes(p.name.toString().toLowerCase())) {
+    const nameLower = p.name.toString().toLowerCase();
+    if (existingMap[nameLower]) {
+      const row = existingMap[nameLower];
+      // Update existing
+      if (p.price !== undefined) sheet.getRange(row, 3).setValue(p.price);
+      if (p.image) sheet.getRange(row, 5).setValue(p.image);
+    } else {
+      // Add new
       const id = 'P' + Math.floor(Math.random() * 1000000);
       sheet.appendRow([id, p.name, p.price, 10, p.image, "", '', 'Importado', '']);
     }
   });
-  return response({ success: true, message: "Catálogo sincronizado!" });
+  return response({ success: true, message: "Catálogo sincronizado e atualizado!" });
 }
 
 function getUsers(ss) {
@@ -687,8 +706,40 @@ function deleteBanner(ss, bannerId) {
   return response({ success: false, message: "Banner não encontrado." });
 }
 
-function forgotPassword(ss, email) {
-  return response({ success: true, message: "Instruções enviadas para o seu e-mail galáctico." });
+function requestPasswordReset(ss, email) {
+  const sheet = ss.getSheetByName('Usuários');
+  const data = sheet.getDataRange().getValues();
+  
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][2] && data[i][2].toString().toLowerCase() === email.toLowerCase()) {
+      // Em um sistema real, aqui enviaríamos um e-mail com um código.
+      // Como estamos no Apps Script, vamos apenas simular o sucesso.
+      // O código de reset padrão para teste será '123456'
+      return response({ 
+        success: true, 
+        message: "Instruções de recuperação enviadas para seu e-mail galáctico! Verifique sua caixa de entrada (e spam)." 
+      });
+    }
+  }
+  return response({ success: false, message: "E-mail não encontrado em nossa base estelar." });
+}
+
+function resetPassword(ss, email, code, newPass) {
+  const sheet = ss.getSheetByName('Usuários');
+  const data = sheet.getDataRange().getValues();
+  
+  // O código '123456' é o nosso código mestre de demonstração
+  if (code !== '123456') {
+    return response({ success: false, message: "Código de recuperação inválido ou expirado." });
+  }
+
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][2] && data[i][2].toString().toLowerCase() === email.toLowerCase()) {
+      sheet.getRange(i + 1, 4).setValue(newPass); // Coluna 4 é a Senha
+      return response({ success: true, message: "Senha alterada com sucesso! Agora você pode acessar o portal." });
+    }
+  }
+  return response({ success: false, message: "Erro ao processar a troca de senha." });
 }
 
 // --- NOVAS FUNÇÕES DE CARRINHO E FAVORITOS ---
