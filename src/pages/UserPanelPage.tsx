@@ -211,6 +211,42 @@ export const UserPanelPage: React.FC<UserPanelPageProps> = ({ user, setUser, che
 
   const [newBanner, setNewBanner] = useState({ title: '', subtitle: '', image: '', link: '', active: 'TRUE', order: '0' });
   const [isAddingBanner, setIsAddingBanner] = useState(false);
+  const [userOrders, setUserOrders] = useState<any[]>([]);
+
+  const fetchUserData = async () => {
+    if (!user?.email) return;
+    try {
+      const res = await apiService.getUser(user.email);
+      if (res.success && res.data) {
+        setUser({ ...user, ...res.data });
+      }
+    } catch (err) {
+      console.error("Error fetching user data:", err);
+    }
+  };
+
+  const fetchUserOrders = async () => {
+    if (!user?.email) return;
+    setIsLoading(true);
+    try {
+      const res = await apiService.getOrders();
+      if (res.success && Array.isArray(res.data)) {
+        const filtered = res.data.filter((o: any) => o.email === user.email);
+        setUserOrders(filtered);
+      }
+    } catch (err) {
+      console.error("Error fetching user orders:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
+    if (user) {
+      fetchUserData();
+      fetchUserOrders();
+    }
+  }, [user?.email]);
 
   const handleAddBanner = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -243,12 +279,6 @@ export const UserPanelPage: React.FC<UserPanelPageProps> = ({ user, setUser, che
     const res = await apiService.updateBanner(banner.id, { active: newStatus });
     if (res.success) fetchAdminData();
   };
-
-  const ordersList = [
-    { id: 'JVV-TEST-2026', date: '12/03/2026', total: 149.90, status: t('Em Produção', 'In Production'), progress: 65, items: 'Copo JVV Pro Térmico' },
-    { id: 'JVV-9942', date: '05/02/2026', total: 89.90, status: t('Entregue', 'Delivered'), progress: 100, items: 'Camiseta Black Hole' },
-    { id: 'JVV-7721', date: '15/01/2026', total: 210.00, status: t('Entregue', 'Delivered'), progress: 100, items: 'Personalizado VIP' }
-  ];
 
   if (!user) return (
     <div className="container mx-auto px-4 md:px-6 py-16 md:py-24 animate-fade text-center text-white font-jakarta">
@@ -401,7 +431,9 @@ export const UserPanelPage: React.FC<UserPanelPageProps> = ({ user, setUser, che
             </div>
 
             <h3 className="relative z-10 text-base md:text-lg font-black uppercase italic mb-1 truncate">{user.name}</h3>
-            <p className="relative z-10 text-[8px] md:text-[9px] text-[#00ff88] font-black uppercase tracking-[0.4em] mb-6 md:mb-10">VIP Explorer</p>
+            <p className={`relative z-10 text-[8px] md:text-[9px] font-black uppercase tracking-[0.4em] mb-6 md:mb-10 ${user.thermometer === 'Quente' ? 'text-[#00ff88]' : user.thermometer === 'Morno' ? 'text-orange-400' : 'text-red-400'}`}>
+              {user.score || 'Bronze'} Explorer
+            </p>
             
             <nav className="relative z-10 flex flex-row overflow-x-auto lg:flex-col gap-3 text-left scrollbar-hide pb-2">
               {menuItems.map(item => {
@@ -417,41 +449,112 @@ export const UserPanelPage: React.FC<UserPanelPageProps> = ({ user, setUser, che
         </aside>
 
         <div className="lg:col-span-3 min-h-[400px] md:min-h-[500px]">
+          {activeTab === 'dashboard' && (
+            <div className="bg-white/[0.02] border border-white/10 p-6 md:p-16 rounded-[40px] md:rounded-[60px] shadow-3xl animate-fade h-full">
+              <h2 className="text-2xl md:text-3xl font-black italic uppercase mb-8 md:mb-12 tracking-tighter text-center md:text-left">{t('Minha', 'My')} <span className="text-[var(--theme-primary)]">{t('Dashboard', 'Dashboard')}</span></h2>
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+                <div className="bg-white/5 border border-white/5 p-8 rounded-[30px] text-center">
+                  <Package className="mx-auto mb-4 text-[var(--theme-primary)]" size={32} />
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">{t('Total de Pedidos', 'Total Orders')}</p>
+                  <h4 className="text-3xl font-black italic uppercase">{userOrders.length}</h4>
+                </div>
+                <div className="bg-white/5 border border-white/5 p-8 rounded-[30px] text-center">
+                  <Rocket className={`mx-auto mb-4 ${user.thermometer === 'Quente' ? 'text-[#00ff88]' : user.thermometer === 'Morno' ? 'text-orange-400' : 'text-red-400'}`} size={32} />
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">{t('Nível Explorer', 'Explorer Level')}</p>
+                  <h4 className="text-3xl font-black italic uppercase">{user.score || 'Bronze'}</h4>
+                </div>
+                <div className="bg-white/5 border border-white/5 p-8 rounded-[30px] text-center">
+                  <ShieldIcon className="mx-auto mb-4 text-blue-400" size={32} />
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">{t('Status da Conta', 'Account Status')}</p>
+                  <h4 className="text-3xl font-black italic uppercase">{t('Ativa', 'Active')}</h4>
+                </div>
+              </div>
+
+              <div className="bg-white/5 border border-white/5 p-8 rounded-[40px]">
+                <h3 className="text-lg font-black uppercase italic mb-6 flex items-center gap-3">
+                  <Clock size={20} className="text-slate-500" />
+                  {t('Atividade Recente', 'Recent Activity')}
+                </h3>
+                {userOrders.length === 0 ? (
+                  <p className="text-sm text-slate-500 italic">{t('Nenhuma atividade galáctica registrada ainda.', 'No galactic activity recorded yet.')}</p>
+                ) : (
+                  <div className="space-y-4">
+                    {userOrders.slice(0, 3).map((o, i) => (
+                      <div key={i} className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-full bg-[var(--theme-primary)]/20 flex items-center justify-center">
+                            <Package size={18} className="text-[var(--theme-primary)]" />
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-black uppercase italic">{t('Pedido Realizado', 'Order Placed')}</p>
+                            <p className="text-[9px] text-slate-500 font-bold">{o.id}</p>
+                          </div>
+                        </div>
+                        <p className="text-[9px] text-slate-500 font-bold">{new Date(o.date).toLocaleDateString()}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {activeTab === 'orders' && (
             <div className="bg-white/[0.02] border border-white/10 p-6 md:p-16 rounded-[40px] md:rounded-[60px] shadow-3xl animate-fade h-full">
               <h2 className="text-2xl md:text-3xl font-black italic uppercase mb-8 md:mb-12 tracking-tighter text-center md:text-left">{t('Meus', 'My')} <span className="text-[var(--theme-primary)]">{t('Pedidos', 'Orders')}</span></h2>
               <div className="space-y-6 md:space-y-10">
-                {ordersList.map(o => (
-                  <div key={o.id} className="bg-white/5 border border-white/5 p-6 md:p-10 rounded-[30px] md:rounded-[40px] relative overflow-hidden group hover:bg-white/[0.08] transition-all">
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 md:mb-10 gap-4 md:gap-6">
-                      <div>
-                        <p className="text-[9px] md:text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">{t('Cód:', 'Code:')} {o.id}</p>
-                        <h4 className="text-lg md:text-xl font-black uppercase italic text-white">{o.items}</h4>
-                        <p className="text-xs md:text-sm font-black text-[#00ff88] mt-1">{formatPrice(o.total)}</p>
-                      </div>
-                      <div className="flex flex-col items-start sm:items-end w-full sm:w-auto">
-                        <span className={`px-4 py-2 rounded-full border text-[8px] md:text-[9px] font-black uppercase tracking-widest ${o.status === t('Entregue', 'Delivered') ? 'bg-[#00ff88]/10 text-[#00ff88] border-[#00ff88]/20' : 'bg-blue-500/10 text-blue-400 border-blue-500/20'}`}>
-                          {o.status}
-                        </span>
-                        <p className="text-[9px] md:text-[10px] font-bold text-slate-500 mt-2 md:mt-3">{o.date}</p>
-                        {o.status === t('Entregue', 'Delivered') && (
-                          <button onClick={openReviewModal} className="mt-3 md:mt-4 bg-white/5 border border-white/10 px-4 py-2 rounded-full text-[8px] md:text-[9px] font-black uppercase tracking-widest text-white hover:bg-[var(--theme-primary)] transition-all flex items-center gap-2">
-                            <Truck size={10} className="text-yellow-400" /> {t('Avaliar', 'Review')}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                    <div className="space-y-3 md:space-y-4">
-                      <div className="flex justify-between items-center text-[8px] md:text-[9px] font-black uppercase tracking-widest text-slate-500">
-                        <span className="flex items-center gap-1.5 md:gap-2"><Truck size={12}/> {t('Progresso', 'Progress')}</span>
-                        <span className="text-white">{o.progress}%</span>
-                      </div>
-                      <div className="w-full h-2 md:h-3 bg-white/5 rounded-full overflow-hidden border border-white/5 p-[2px]">
-                        <div className="h-full bg-gradient-to-r from-[var(--theme-primary)] to-[#00d2ff] transition-all duration-1000 shadow-xl rounded-full" style={{ width: `${o.progress}%` }}></div>
-                      </div>
-                    </div>
+                {userOrders.length === 0 ? (
+                  <div className="text-center py-20">
+                    <Package size={64} className="mx-auto text-white/10 mb-6" />
+                    <p className="text-slate-500 font-bold uppercase tracking-widest">{t('Você ainda não realizou pedidos.', 'You haven\'t placed any orders yet.')}</p>
                   </div>
-                ))}
+                ) : (
+                  userOrders.map(o => {
+                    let itemsParsed = [];
+                    try {
+                      itemsParsed = typeof o.items === 'string' ? JSON.parse(o.items) : o.items;
+                    } catch (e) {
+                      itemsParsed = [];
+                    }
+                    
+                    const progress = o.status === 'Entregue' ? 100 : o.status === 'Enviado' ? 85 : o.status === 'Em Produção' ? 50 : 15;
+
+                    return (
+                      <div key={o.id} className="bg-white/5 border border-white/5 p-6 md:p-10 rounded-[30px] md:rounded-[40px] relative overflow-hidden group hover:bg-white/[0.08] transition-all">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 md:mb-10 gap-4 md:gap-6">
+                          <div>
+                            <p className="text-[9px] md:text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">{t('Cód:', 'Code:')} {o.id}</p>
+                            <h4 className="text-lg md:text-xl font-black uppercase italic text-white">
+                              {Array.isArray(itemsParsed) ? itemsParsed.map((item: any) => item.name).join(', ') : t('Pedido Galáctico', 'Galactic Order')}
+                            </h4>
+                            <p className="text-xs md:text-sm font-black text-[#00ff88] mt-1">{formatPrice(o.total)}</p>
+                          </div>
+                          <div className="flex flex-col items-start sm:items-end w-full sm:w-auto">
+                            <span className={`px-4 py-2 rounded-full border text-[8px] md:text-[9px] font-black uppercase tracking-widest ${o.status === 'Entregue' ? 'bg-[#00ff88]/10 text-[#00ff88] border-[#00ff88]/20' : 'bg-blue-500/10 text-blue-400 border-blue-500/20'}`}>
+                              {o.status}
+                            </span>
+                            <p className="text-[9px] md:text-[10px] font-bold text-slate-500 mt-2 md:mt-3">{new Date(o.date).toLocaleDateString()}</p>
+                            {o.status === 'Entregue' && (
+                              <button onClick={openReviewModal} className="mt-3 md:mt-4 bg-white/5 border border-white/10 px-4 py-2 rounded-full text-[8px] md:text-[9px] font-black uppercase tracking-widest text-white hover:bg-[var(--theme-primary)] transition-all flex items-center gap-2">
+                                <Truck size={10} className="text-yellow-400" /> {t('Avaliar', 'Review')}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                        <div className="space-y-3 md:space-y-4">
+                          <div className="flex justify-between items-center text-[8px] md:text-[9px] font-black uppercase tracking-widest text-slate-500">
+                            <span className="flex items-center gap-1.5 md:gap-2"><Truck size={12}/> {t('Progresso', 'Progress')}</span>
+                            <span className="text-white">{progress}%</span>
+                          </div>
+                          <div className="w-full h-2 md:h-3 bg-white/5 rounded-full overflow-hidden border border-white/5 p-[2px]">
+                            <div className="h-full bg-gradient-to-r from-[var(--theme-primary)] to-[#00d2ff] transition-all duration-1000 shadow-xl rounded-full" style={{ width: `${progress}%` }}></div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
               </div>
             </div>
           )}

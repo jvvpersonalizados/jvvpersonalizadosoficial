@@ -98,6 +98,10 @@ export const apiService = {
     return this.post("getUsers", {});
   },
 
+  async getUser(email: string) {
+    return this.post("getUser", { email });
+  },
+
   async deleteUser(userId: string) {
     return this.post("deleteUser", { userId });
   },

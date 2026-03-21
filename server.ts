@@ -96,13 +96,15 @@ app.post("/api/generate-post", async (req, res) => {
 // API Route for Social Feed (Pinterest fallback for Instagram)
 app.get("/api/social-feed", async (req, res) => {
   const pinterestUrl = "https://br.pinterest.com/JVVPersonalizadosPinterest/_tpd_social/";
+  
+  // More relevant fallback images (personalized products style)
   const fallback = [
-    "https://images.unsplash.com/photo-1514228742587-6b1558fcca3d?auto=format&fit=crop&w=600&q=80",
-    "https://images.unsplash.com/photo-1614732484003-ef9881555dc3?auto=format&fit=crop&w=600&q=80",
-    "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=600&q=80",
-    "https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&w=600&q=80",
-    "https://images.unsplash.com/photo-1581092160562-40aa08e78837?auto=format&fit=crop&w=600&q=80",
-    "https://images.unsplash.com/photo-1572119865084-43c285814d63?auto=format&fit=crop&w=600&q=80"
+    "https://images.unsplash.com/photo-1514228742587-6b1558fcca3d?auto=format&fit=crop&w=600&q=80", // Mug
+    "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=600&q=80", // T-shirt
+    "https://images.unsplash.com/photo-1549465220-1a8b9238cd48?auto=format&fit=crop&w=600&q=80", // Gift
+    "https://images.unsplash.com/photo-1517142089942-ba376ce32a2e?auto=format&fit=crop&w=600&q=80", // Box
+    "https://images.unsplash.com/photo-1581092160562-40aa08e78837?auto=format&fit=crop&w=600&q=80", // Custom item
+    "https://images.unsplash.com/photo-1572119865084-43c285814d63?auto=format&fit=crop&w=600&q=80"  // Packaging
   ].map((img, i) => ({
     id: `fallback-${i}`,
     url: pinterestUrl,
@@ -112,58 +114,110 @@ app.get("/api/social-feed", async (req, res) => {
   }));
 
   try {
+    console.log(`Scraping Pinterest: ${pinterestUrl}`);
     const response = await axios.get(pinterestUrl, {
       headers: {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
         "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+        "Cache-Control": "no-cache",
+        "Pragma": "no-cache"
       },
-      timeout: 8000
+      timeout: 10000
     });
 
     const html = response.data;
     const $ = cheerio.load(html);
     const posts: any[] = [];
 
-    $("img").each((i, el) => {
-      const src = $(el).attr("src") || $(el).attr("data-src") || $(el).attr("srcset")?.split(" ")[0];
-      if (src && (src.includes("pinimg.com") || src.includes("/236x/") || src.includes("/474x/") || src.includes("/736x/"))) {
-        const highRes = src.replace(/\/\d+x\//, "/736x/");
-        posts.push({
-          id: `pin-img-${i}-${Math.random().toString(36).substr(2, 5)}`,
-          url: pinterestUrl,
-          image: highRes,
-          thumbnail: src,
-          caption: $(el).attr("alt") || "JVV Personalizados"
+    // 1. Try to extract from __PWS_DATA__ script (most reliable)
+    const scriptData = $('#__PWS_DATA__').html() || 
+                      $('script[type="application/json"]').filter((i, el) => $(el).html()?.includes('initialReduxState')).html() ||
+                      $('script').filter((i, el) => $(el).html()?.includes('initialReduxState')).html();
+
+    if (scriptData) {
+      try {
+        let jsonStr = scriptData.trim();
+        if (jsonStr.includes('window.__PWS_DATA__ = ')) {
+          jsonStr = jsonStr.split('window.__PWS_DATA__ = ')[1].split(';')[0];
+        }
+        
+        const jsonData = JSON.parse(jsonStr);
+        const pins = jsonData?.props?.initialReduxState?.pins || 
+                     jsonData?.initialReduxState?.pins || 
+                     {};
+
+        Object.values(pins).forEach((pin: any) => {
+          if (pin.images?.orig?.url) {
+            posts.push({
+              id: `pin-json-${pin.id}`,
+              url: `https://www.pinterest.com/pin/${pin.id}/`,
+              image: pin.images.orig.url,
+              thumbnail: pin.images['236x']?.url || pin.images.orig.url,
+              caption: pin.description || pin.title || "JVV Personalizados"
+            });
+          }
         });
+        console.log(`Found ${posts.length} posts via JSON`);
+      } catch (e) {
+        console.error("Error parsing Pinterest JSON:", e);
       }
-    });
-
-    const pinimgRegex = /https:\/\/i\.pinimg\.com\/[^\s"']+\.(jpg|jpeg|png|webp)/g;
-    const matches = html.match(pinimgRegex) || [];
-    matches.forEach((match: string, i: number) => {
-      if (match.includes("/236x/") || match.includes("/474x/") || match.includes("/736x/")) {
-        const highRes = match.replace(/\/\d+x\//, "/736x/");
-        posts.push({
-          id: `pin-regex-${i}-${Math.random().toString(36).substr(2, 5)}`,
-          url: pinterestUrl,
-          image: highRes,
-          thumbnail: match,
-          caption: "JVV Personalizados"
-        });
-      }
-    });
-
-    const uniquePosts = Array.from(new Map(posts.map(item => [item.image, item])).values());
-
-    if (uniquePosts.length === 0) {
-      return res.json({ success: true, posts: fallback });
     }
 
-    res.json({ success: true, posts: uniquePosts.slice(0, 12) });
-  } catch (error: any) {
-    console.error("Pinterest fetch error:", error.message);
+    // 2. Regex fallback if JSON parsing failed but script exists
+    if (posts.length < 6 && scriptData) {
+      const imgRegex = /"orig":\s*{\s*"url":\s*"([^"]+)"/g;
+      let match;
+      while ((match = imgRegex.exec(scriptData)) !== null) {
+        const url = match[1];
+        if (!posts.some(p => p.image === url)) {
+          posts.push({
+            id: `pin-regex-${posts.length}`,
+            url: pinterestUrl,
+            image: url,
+            thumbnail: url,
+            caption: "JVV Personalizados"
+          });
+        }
+      }
+      console.log(`Found ${posts.length} posts after regex fallback`);
+    }
+
+    // 3. Fallback to img scraping if still not enough
+    if (posts.length < 6) {
+      $("img").each((i, el) => {
+        const src = $(el).attr("src") || $(el).attr("data-src") || $(el).attr("srcset")?.split(" ")[0];
+        if (src && (src.includes("pinimg.com") || src.includes("/236x/") || src.includes("/474x/") || src.includes("/736x/"))) {
+          // Avoid small icons/avatars
+          if (!src.includes("user_") && !src.includes("avatar")) {
+            const highRes = src.replace(/\/\d+x\//, "/736x/");
+            if (!posts.some(p => p.image === highRes)) {
+              posts.push({
+                id: `pin-img-${i}-${Math.random().toString(36).substr(2, 5)}`,
+                url: pinterestUrl,
+                image: highRes,
+                thumbnail: src,
+                caption: $(el).attr("alt") || "JVV Personalizados"
+              });
+            }
+          }
+        }
+      });
+      console.log(`Found ${posts.length} posts after img scraping`);
+    }
+
+    // Deduplicate by image URL
+    const uniquePosts = Array.from(new Map(posts.map(p => [p.image, p])).values());
+    
+    if (uniquePosts.length > 0) {
+      return res.json({ success: true, posts: uniquePosts.slice(0, 18) });
+    }
+
+    console.log("No posts found, returning fallback");
     res.json({ success: true, posts: fallback });
+  } catch (error: any) {
+    console.error("Error scraping Pinterest:", error.message);
+    res.json({ success: true, posts: fallback, error: error.message });
   }
 });
 

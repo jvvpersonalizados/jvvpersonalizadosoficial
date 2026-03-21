@@ -56,9 +56,11 @@ export const InstagramFeed: React.FC<InstagramFeedProps> = ({ t }) => {
               <p className="text-[9px] md:text-[11px] text-slate-500 font-bold uppercase tracking-[0.2em] mt-1 md:mt-2">{t('Exploração diária no nosso feed stelar', 'Daily exploration on our stellar feed')}</p>
             </div>
           </div>
-          <a href="https://www.instagram.com/jvvpersonalizados/" target="_blank" rel="noopener noreferrer" className="w-full md:w-auto text-center bg-white/5 px-8 py-3.5 md:py-3 rounded-full text-[10px] font-black uppercase tracking-widest border border-white/10 text-white hover:bg-[#d91ebd] transition-all">
-            {t('Abrir no Instagram', 'Open on Instagram')}
-          </a>
+          <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+            <a href="https://www.instagram.com/jvvpersonalizados/" target="_blank" rel="noopener noreferrer" className="flex-1 sm:flex-none text-center bg-white/5 px-8 py-3.5 md:py-3 rounded-full text-[10px] font-black uppercase tracking-widest border border-white/10 text-white hover:bg-[#d91ebd] transition-all">
+              {t('Abrir no Instagram', 'Open on Instagram')}
+            </a>
+          </div>
         </div>
 
         {loading ? (
@@ -71,11 +73,17 @@ export const InstagramFeed: React.FC<InstagramFeedProps> = ({ t }) => {
             <p className="text-xs mt-2">{error}</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-6">
             {posts.map((post) => (
               <a key={post.id} href={post.url} target="_blank" rel="noopener noreferrer" className="aspect-square rounded-2xl md:rounded-3xl overflow-hidden relative group cursor-pointer border border-white/5 shadow-xl block">
                 <img src={post.image} alt={post.caption} className="w-full h-full object-cover group-hover:scale-110 transition-all duration-700 opacity-80 group-hover:opacity-100" referrerPolicy="no-referrer" />
-                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center text-white font-bold"><Instagram className="text-white" size={24} /></div>
+                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center text-white font-bold">
+                  {post.url.includes('pinterest.com') || post.url.includes('pin.it') ? (
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.08 3.16 9.42 7.63 11.16-.1-.95-.19-2.4.04-3.43.21-.93 1.35-5.73 1.35-5.73s-.34-.69-.34-1.71c0-1.61.93-2.81 2.09-2.81 1 0 1.48.75 1.48 1.64 0 1-.64 2.5-1 3.88-.28 1.17.58 2.13 1.73 2.13 2.08 0 3.68-2.19 3.68-5.36 0-2.8-2.02-4.76-4.89-4.76-3.33 0-5.28 2.5-5.28 5.08 0 1.01.39 2.09.87 2.67.1.12.11.22.08.34-.09.37-.28 1.14-.32 1.28-.05.2-.17.25-.39.14-1.43-.67-2.33-2.78-2.33-4.47 0-3.64 2.64-6.98 7.62-6.98 4 0 7.11 2.85 7.11 6.66 0 3.98-2.51 7.18-5.99 7.18-1.17 0-2.27-.61-2.65-1.33l-.72 2.74c-.26 1-1.01 2.25-1.51 3.06C10.08 23.83 11.02 24 12 24c6.63 0 12-5.37 12-12S18.63 0 12 0z"/></svg>
+                  ) : (
+                    <Instagram className="text-white" size={24} />
+                  )}
+                </div>
               </a>
             ))}
           </div>
