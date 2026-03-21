@@ -72,7 +72,7 @@ app.post("/api/generate-post", async (req, res) => {
     
     // Sync with GAS
     const gasUrl = process.env.GAS_WEBAPP_URL || "https://script.google.com/macros/s/AKfycbwphZBklibQRJghRhs9-eYleKbIx8mbDqWSZGxmSbapOTuDDA9sg7xkGRxETCQSAwjCvQ/exec";
-    const gasToken = process.env.GAS_API_TOKEN || "JVV_STORE_SECRET_2026";
+    const gasToken = (process.env.GAS_API_TOKEN || "JVV_STORE_SECRET_2026").trim();
     
     await axios.post(gasUrl, {
       action: "addProduct",
@@ -302,7 +302,7 @@ app.get("/api/sync-catalog", async (req, res) => {
     const uniqueProducts = Array.from(new Map(products.map(p => [p.name, p])).values());
 
     const gasUrl = process.env.GAS_WEBAPP_URL || "https://script.google.com/macros/s/AKfycbwphZBklibQRJghRhs9-eYleKbIx8mbDqWSZGxmSbapOTuDDA9sg7xkGRxETCQSAwjCvQ/exec";
-    const gasToken = process.env.GAS_API_TOKEN || "JVV_STORE_SECRET_2026";
+    const gasToken = (process.env.GAS_API_TOKEN || "JVV_STORE_SECRET_2026").trim();
     
     await axios.post(gasUrl, {
       action: "syncCatalog",
@@ -321,7 +321,7 @@ app.get("/api/sync-catalog", async (req, res) => {
 app.post("/api/gas-proxy", async (req, res) => {
   try {
     const gasUrl = process.env.GAS_WEBAPP_URL || "https://script.google.com/macros/s/AKfycbwphZBklibQRJghRhs9-eYleKbIx8mbDqWSZGxmSbapOTuDDA9sg7xkGRxETCQSAwjCvQ/exec";
-    const gasToken = process.env.GAS_API_TOKEN || "JVV_STORE_SECRET_2026";
+    const gasToken = (process.env.GAS_API_TOKEN || "JVV_STORE_SECRET_2026").trim();
     
     // Injetar o token de segurança no corpo da requisição
     const bodyWithToken = { ...req.body, token: gasToken };

@@ -13,9 +13,10 @@
 
 function getConfigs() {
   const props = PropertiesService.getScriptProperties();
+  const rawToken = props.getProperty('API_TOKEN') || 'JVV_STORE_SECRET_2026';
   return {
     spreadsheetId: props.getProperty('ID_DA_PLANILHA') || '1n_9EfiJ5vFiwvf6Skjn-izQhhb_QULNhOAyymz5PuEk',
-    apiToken: props.getProperty('API_TOKEN') || 'JVV_STORE_SECRET_2026'
+    apiToken: rawToken.toString().trim()
   };
 }
 
@@ -159,8 +160,11 @@ function doPost(e) {
   }
 
   // Ponte de Conexão com a IA (Ações Administrativas)
-  if (data.token !== configs.apiToken) {
-    logAction(ss, data.action || "Unknown", "Unauthorized", "Failed", "Token inválido. Recebido: " + (data.token || "vazio"));
+  const receivedToken = (data.token || "").toString().trim();
+  const expectedToken = (configs.apiToken || "").toString().trim();
+  
+  if (receivedToken !== expectedToken) {
+    logAction(ss, data.action || "Unknown", "Unauthorized", "Failed", "Token inválido. Recebido: " + receivedToken);
     return response({ success: false, message: "Acesso não autorizado." });
   }
 
