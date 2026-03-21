@@ -21,6 +21,7 @@ export const AdminPortalPage: React.FC<AdminPortalProps> = ({ t, formatPrice }) 
   const [adminProducts, setAdminProducts] = useState<any[]>([]);
   const [adminBanners, setAdminBanners] = useState<any[]>([]);
   const [adminStats, setAdminStats] = useState<any>(null);
+  const [adminLogs, setAdminLogs] = useState<any[]>([]);
   
   // Forms
   const [newProduct, setNewProduct] = useState({ name: '', price: '', image: '', description: '' });
@@ -33,18 +34,20 @@ export const AdminPortalPage: React.FC<AdminPortalProps> = ({ t, formatPrice }) 
   const fetchAdminData = async () => {
     setIsLoading(true);
     try {
-      const [ordersRes, usersRes, statsRes, catalogRes, bannersRes] = await Promise.all([
+      const [ordersRes, usersRes, statsRes, catalogRes, bannersRes, logsRes] = await Promise.all([
         apiService.getOrders(),
         apiService.getUsers(),
-        apiService.getAdminStats(),
+        apiService.getDashboardData(),
         apiService.getCatalog(),
-        apiService.getBanners()
+        apiService.getBanners(),
+        apiService.getLogs()
       ]);
       if (ordersRes.success) setAdminOrders(ordersRes.data);
       if (usersRes.success) setAdminUsers(usersRes.data);
       if (statsRes.success) setAdminStats(statsRes.data);
       if (catalogRes.success) setAdminProducts(catalogRes.data);
       if (bannersRes.success) setAdminBanners(bannersRes.data);
+      if (logsRes.success) setAdminLogs(logsRes.data);
     } catch (err) {
       console.error("Error fetching admin data:", err);
     } finally {
@@ -128,6 +131,12 @@ export const AdminPortalPage: React.FC<AdminPortalProps> = ({ t, formatPrice }) 
     if (res.success) fetchAdminData();
   };
 
+  const handleClearLogs = async () => {
+    if (!confirm("Limpar todos os logs?")) return;
+    const res = await apiService.clearLogs();
+    if (res.success) fetchAdminData();
+  };
+
   const handleGeneratePost = async () => {
     if (!promptIA) return;
     setIsGenerating(true);
@@ -157,6 +166,7 @@ export const AdminPortalPage: React.FC<AdminPortalProps> = ({ t, formatPrice }) 
     { id: 'products', n: 'Produtos', i: Package },
     { id: 'orders', n: 'Pedidos', i: Truck },
     { id: 'users', n: 'Usuários', i: Users },
+    { id: 'logs', n: 'Logs', i: Database },
     { id: 'ia', n: 'Inteligência IA', i: Rocket },
   ];
 
@@ -234,7 +244,7 @@ export const AdminPortalPage: React.FC<AdminPortalProps> = ({ t, formatPrice }) 
                 { l: 'Faturamento Total', v: formatPrice(adminStats?.totalRevenue || 0), i: BarChart3, c: 'text-green-400' },
                 { l: 'Pedidos Pendentes', v: adminStats?.pendingOrders || 0, i: Clock, c: 'text-yellow-400' },
                 { l: 'Novos Clientes', v: adminStats?.newUsers || 0, i: Users, c: 'text-blue-400' },
-                { l: 'Produtos em Linha', v: adminProducts.length, i: Package, c: 'text-purple-400' },
+                { l: 'Ticket Médio', v: formatPrice(adminStats?.avgTicket || 0), i: Rocket, c: 'text-purple-400' },
               ].map((s, idx) => (
                 <div key={idx} className="bg-zinc-900/50 border border-white/5 p-6 rounded-[30px] shadow-xl">
                   <div className="flex justify-between items-start mb-4">
@@ -247,27 +257,49 @@ export const AdminPortalPage: React.FC<AdminPortalProps> = ({ t, formatPrice }) 
               ))}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              <div className="bg-zinc-900/50 border border-white/5 p-8 rounded-[40px]">
-                <h3 className="text-lg font-black italic uppercase mb-6">Ações Rápidas</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <button onClick={() => setActiveTab('banners')} className="p-6 bg-white/5 rounded-3xl border border-white/5 hover:border-blue-500/50 transition-all text-left group">
-                    <ImageIcon size={24} className="text-blue-500 mb-4 group-hover:scale-110 transition-transform" />
-                    <p className="text-[10px] font-black uppercase tracking-widest">Novo Banner</p>
-                  </button>
-                  <button onClick={() => setActiveTab('products')} className="p-6 bg-white/5 rounded-3xl border border-white/5 hover:border-purple-500/50 transition-all text-left group">
-                    <Plus size={24} className="text-purple-500 mb-4 group-hover:scale-110 transition-transform" />
-                    <p className="text-[10px] font-black uppercase tracking-widest">Novo Produto</p>
-                  </button>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              <div className="lg:col-span-2 bg-zinc-900/50 border border-white/5 p-8 rounded-[40px]">
+                <div className="flex justify-between items-center mb-8">
+                  <h3 className="text-lg font-black italic uppercase">Histórico de Vendas</h3>
+                  <span className="text-[10px] font-bold text-zinc-500 uppercase">Últimos 30 dias</span>
+                </div>
+                <div className="h-48 flex items-end gap-2">
+                  {adminStats?.salesHistory && Object.entries(adminStats.salesHistory).slice(-15).map(([date, value]: any, idx) => {
+                    const max = Math.max(...Object.values(adminStats.salesHistory) as number[]);
+                    const height = max > 0 ? (value / max) * 100 : 0;
+                    return (
+                      <div key={idx} className="flex-1 flex flex-col items-center gap-2 group">
+                        <div 
+                          className="w-full bg-blue-600/20 group-hover:bg-blue-600/40 rounded-t-lg transition-all relative"
+                          style={{ height: `${height}%` }}
+                        >
+                          <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-zinc-800 px-2 py-1 rounded text-[8px] opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                            {formatPrice(value)}
+                          </div>
+                        </div>
+                        <span className="text-[7px] text-zinc-600 font-bold uppercase rotate-45 mt-2">{date.split('-').slice(1).join('/')}</span>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
-              <div className="bg-zinc-900/50 border border-white/5 p-8 rounded-[40px] flex flex-col justify-center items-center text-center">
-                <Globe size={40} className="text-zinc-700 mb-4" />
-                <h3 className="text-sm font-black uppercase tracking-widest mb-2">Site Público</h3>
-                <p className="text-[10px] text-zinc-500 mb-6 max-w-xs">O site principal está rodando a versão estável. Todas as alterações feitas aqui refletem instantaneamente lá.</p>
-                <a href="/" target="_blank" className="flex items-center gap-2 text-[10px] font-black uppercase text-blue-400 hover:text-blue-300 transition-colors">
-                  Visualizar Loja <ExternalLink size={12} />
-                </a>
+              
+              <div className="bg-zinc-900/50 border border-white/5 p-8 rounded-[40px]">
+                <h3 className="text-lg font-black italic uppercase mb-6">Ações Rápidas</h3>
+                <div className="grid grid-cols-1 gap-4">
+                  <button onClick={() => setActiveTab('banners')} className="p-4 bg-white/5 rounded-2xl border border-white/5 hover:border-blue-500/50 transition-all text-left flex items-center gap-4 group">
+                    <ImageIcon size={20} className="text-blue-500 group-hover:scale-110 transition-transform" />
+                    <p className="text-[10px] font-black uppercase tracking-widest">Novo Banner</p>
+                  </button>
+                  <button onClick={() => setActiveTab('products')} className="p-4 bg-white/5 rounded-2xl border border-white/5 hover:border-purple-500/50 transition-all text-left flex items-center gap-4 group">
+                    <Plus size={20} className="text-purple-500 group-hover:scale-110 transition-transform" />
+                    <p className="text-[10px] font-black uppercase tracking-widest">Novo Produto</p>
+                  </button>
+                  <button onClick={handleSyncCatalog} className="p-4 bg-white/5 rounded-2xl border border-white/5 hover:border-green-500/50 transition-all text-left flex items-center gap-4 group">
+                    <RefreshCw size={20} className="text-green-500 group-hover:rotate-180 transition-transform" />
+                    <p className="text-[10px] font-black uppercase tracking-widest">Sincronizar</p>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -427,6 +459,48 @@ export const AdminPortalPage: React.FC<AdminPortalProps> = ({ t, formatPrice }) 
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {activeTab === 'logs' && (
+          <div className="space-y-6 animate-fade">
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-black italic uppercase">Logs do Sistema</h3>
+              <button 
+                onClick={handleClearLogs}
+                className="px-4 py-2 bg-red-600/10 text-red-400 border border-red-600/20 rounded-xl text-[9px] font-black uppercase tracking-widest hover:bg-red-600/20 transition-all"
+              >
+                Limpar Logs
+              </button>
+            </div>
+            <div className="bg-zinc-900/50 border border-white/5 rounded-[40px] overflow-hidden">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-white/5 text-[10px] font-black uppercase tracking-widest text-zinc-500">
+                    <th className="p-6">Data/Hora</th>
+                    <th className="p-6">Ação</th>
+                    <th className="p-6">Usuário</th>
+                    <th className="p-6">Status</th>
+                    <th className="p-6">Detalhes</th>
+                  </tr>
+                </thead>
+                <tbody className="text-[10px] font-bold">
+                  {adminLogs.map((log, idx) => (
+                    <tr key={idx} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
+                      <td className="p-6 text-zinc-500">{new Date(log.date).toLocaleString()}</td>
+                      <td className="p-6 uppercase tracking-tighter">{log.action}</td>
+                      <td className="p-6 text-blue-400">{log.user}</td>
+                      <td className="p-6">
+                        <span className={`px-2 py-1 rounded ${log.status === 'Success' ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
+                          {log.status}
+                        </span>
+                      </td>
+                      <td className="p-6 text-zinc-400 max-w-xs truncate">{log.details}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
 

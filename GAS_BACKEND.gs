@@ -1,5 +1,5 @@
 /**
- * BACKEND INTELIGENTE JVV STORE - VERSÃO PROFISSIONAL
+ * BACKEND INTELIGENTE JVV STORE - VERSÃO PROFISSIONAL 2.0
  * 
  * Este script utiliza "Propriedades do Script" para maior segurança.
  * 
@@ -18,6 +18,19 @@ function getConfigs() {
     spreadsheetId: props.getProperty('ID_DA_PLANILHA') || '1n_9EfiJ5vFiwvf6Skjn-izQhhb_QULNhOAyymz5PuEk',
     apiToken: rawToken.toString().trim()
   };
+}
+
+/**
+ * MAPEAMENTO DINÂMICO DE COLUNAS
+ * Retorna um objeto com os índices das colunas baseados nos cabeçalhos.
+ */
+function getColumnMapping(sheet) {
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const mapping = {};
+  headers.forEach((header, index) => {
+    if (header) mapping[header.toString().trim()] = index;
+  });
+  return mapping;
 }
 
 function setupSpreadsheet() {
@@ -42,27 +55,35 @@ function setupSpreadsheet() {
     }
     
     // Garantir cabeçalhos e formatação
-    sheet.getRange(1, 1, 1, sheets[name].length).setValues([sheets[name]]);
-    const headerRange = sheet.getRange(1, 1, 1, sheets[name].length);
+    const currentHeaders = sheet.getLastColumn() > 0 ? sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0] : [];
+    const newHeaders = sheets[name];
+    
+    // Se a aba estiver vazia ou com cabeçalhos diferentes, atualiza
+    if (currentHeaders.join(',') !== newHeaders.join(',')) {
+      sheet.getRange(1, 1, 1, newHeaders.length).setValues([newHeaders]);
+    }
+
+    const headerRange = sheet.getRange(1, 1, 1, newHeaders.length);
     headerRange.setFontWeight("bold").setBackground("#1a1a1a").setFontColor("#ffffff").setHorizontalAlignment("center");
     sheet.setFrozenRows(1);
     
     if (name === "Pedidos") {
       const statusRange = sheet.getRange(2, 5, 999, 1);
-      const rule = SpreadsheetApp.newDataValidation().requireValueInList(['Pagamento em Aprovação', 'Criação de Arte', 'Produção de Arte', 'Produção', 'Envio', 'Entregue'], true).build();
+      const rule = SpreadsheetApp.newDataValidation().requireValueInList(['Pagamento em Aprovação', 'Criação de Arte', 'Produção de Arte', 'Produção', 'Envio', 'Entregue', 'Cancelado'], true).build();
       statusRange.setDataValidation(rule);
       sheet.getRange(2, 4, 999, 1).setNumberFormat('R$ #,##0.00');
     }
     
     if (name === "Catálogo") {
       sheet.getRange(2, 3, 999, 1).setNumberFormat('R$ #,##0.00');
+      // Coluna 6 é Preview (IMAGE)
       sheet.getRange(2, 6, 999, 1).setFormulaR1C1('=IF(ISBLANK(RC[-1]), "", IMAGE(RC[-1]))');
     }
 
     if (name === "Dashboard") {
       sheet.getRange("A2:A6").setValues([["Total de Vendas"], ["Pedidos em Processamento"], ["Novos Clientes (30 dias)"], ["Ticket Médio"], ["Produtos Sem Estoque"]]);
       sheet.getRange("B2").setFormula('=SUM(\'Pedidos\'!D:D)');
-      sheet.getRange("B3").setFormula('=COUNTIFS(\'Pedidos\'!E:E, "<>Entregue", \'Pedidos\'!E:E, "<>")');
+      sheet.getRange("B3").setFormula('=COUNTIFS(\'Pedidos\'!E:E, "<>Entregue", \'Pedidos\'!E:E, "<>Cancelado", \'Pedidos\'!E:E, "<>")');
       sheet.getRange("B4").setFormula('=COUNTIFS(\'Usuários\'!F:F, ">"&TODAY()-30)');
       sheet.getRange("B5").setFormula('=IF(B2>0, B2/COUNT(\'Pedidos\'!D:D), 0)');
       sheet.getRange("B6").setFormula('=COUNTIF(\'Catálogo\'!D:D, "<=0")');
@@ -214,6 +235,9 @@ function doPost(e) {
       case 'getSettings': res = getSettings(ss); break;
       case 'updateSettings': res = updateSettings(ss, data.settings); break;
       case 'calculateShipping': res = calculateShipping(ss, data.cep); break;
+      case 'getLogs': res = getLogs(ss); break;
+      case 'clearLogs': res = clearLogs(ss); break;
+      case 'getDashboardData': res = getDashboardData(ss); break;
       case 'ai_checkup': res = response({ success: true, status: getSystemStatus() }); break;
       case 'ai_read_data':
         const allData = {};
@@ -290,8 +314,61 @@ function logAction(ss, action, user, status, details) {
   }
 }
 
-function response(obj) {
-  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
+function getLogs(ss) {
+  const sheet = ss.getSheetByName('Logs');
+  if (!sheet) return response({ success: true, data: [] });
+  const data = sheet.getDataRange().getValues();
+  const logs = [];
+  for (let i = data.length - 1; i >= 1; i--) {
+    logs.push({
+      date: data[i][0],
+      action: data[i][1],
+      user: data[i][2],
+      status: data[i][3],
+      details: data[i][4]
+    });
+    if (logs.length >= 100) break; // Limite de 100 logs para performance
+  }
+  return response({ success: true, data: logs });
+}
+
+function clearLogs(ss) {
+  const sheet = ss.getSheetByName('Logs');
+  if (!sheet) return response({ success: false, message: "Tabela de logs não encontrada." });
+  const lastRow = sheet.getLastRow();
+  if (lastRow > 1) {
+    sheet.deleteRows(2, lastRow - 1);
+  }
+  return response({ success: true, message: "Logs limpos com sucesso!" });
+}
+
+function getDashboardData(ss) {
+  const dashboard = ss.getSheetByName('Dashboard');
+  const stats = dashboard.getRange("B2:B6").getValues();
+  
+  // Buscar dados adicionais para gráficos
+  const ordersSheet = ss.getSheetByName('Pedidos');
+  const ordersData = ordersSheet.getDataRange().getValues();
+  const salesByDay = {};
+  
+  for (let i = 1; i < ordersData.length; i++) {
+    const date = new Date(ordersData[i][6]);
+    if (isNaN(date)) continue;
+    const day = date.toISOString().split('T')[0];
+    salesByDay[day] = (salesByDay[day] || 0) + parseFloat(ordersData[i][3] || 0);
+  }
+  
+  return response({
+    success: true,
+    data: {
+      totalRevenue: stats[0][0],
+      pendingOrders: stats[1][0],
+      newUsers: stats[2][0],
+      avgTicket: stats[3][0],
+      outOfStock: stats[4][0],
+      salesHistory: salesByDay
+    }
+  });
 }
 
 // --- FUNÇÕES DE LÓGICA (TRADUZIDAS E OTIMIZADAS) ---
@@ -370,17 +447,24 @@ function getSafeSheet(ss, name) {
 function updateUser(ss, email, userData) {
   const sheet = getSafeSheet(ss, 'Usuários');
   if (!sheet) return response({ success: false, message: "Erro: Tabela 'Usuários' não encontrada." });
+  
   const data = sheet.getDataRange().getValues();
+  const mapping = getColumnMapping(sheet);
+  
   for (let i = 1; i < data.length; i++) {
-    if (data[i][2] && data[i][2].toString().toLowerCase() === email.toLowerCase()) {
-      // Update columns: Nome(1), Telefone(6), CPF(7), Nascimento(8), CEP(9), Endereco(10)
-      if (userData.name !== undefined && userData.name !== null) sheet.getRange(i + 1, 2).setValue(userData.name);
-      if (userData.telefone !== undefined && userData.telefone !== null) sheet.getRange(i + 1, 7).setValue(userData.telefone);
-      if (userData.cpf !== undefined && userData.cpf !== null) sheet.getRange(i + 1, 8).setValue(userData.cpf);
-      if (userData.nascimento !== undefined && userData.nascimento !== null) sheet.getRange(i + 1, 9).setValue(userData.nascimento);
-      if (userData.cep !== undefined && userData.cep !== null) sheet.getRange(i + 1, 10).setValue(userData.cep);
-      if (userData.endereco !== undefined && userData.endereco !== null) sheet.getRange(i + 1, 11).setValue(userData.endereco);
-      if (userData.photo !== undefined && userData.photo !== null) sheet.getRange(i + 1, 14).setValue(userData.photo);
+    if (data[i][mapping["Email"]] && data[i][mapping["Email"]].toString().toLowerCase() === email.toLowerCase()) {
+      const row = i + 1;
+      
+      if (userData.name !== undefined) sheet.getRange(row, mapping["Nome"] + 1).setValue(userData.name);
+      if (userData.telefone !== undefined) sheet.getRange(row, mapping["Telefone"] + 1).setValue(userData.telefone);
+      if (userData.cpf !== undefined) sheet.getRange(row, mapping["CPF"] + 1).setValue(userData.cpf);
+      if (userData.nascimento !== undefined) sheet.getRange(row, mapping["Nascimento"] + 1).setValue(userData.nascimento);
+      if (userData.cep !== undefined) sheet.getRange(row, mapping["CEP"] + 1).setValue(userData.cep);
+      if (userData.endereco !== undefined) sheet.getRange(row, mapping["Endereco"] + 1).setValue(userData.endereco);
+      if (userData.photo !== undefined) sheet.getRange(row, mapping["Foto"] + 1).setValue(userData.photo);
+      if (userData.thermometer !== undefined) sheet.getRange(row, mapping["Termômetro"] + 1).setValue(userData.thermometer);
+      if (userData.score !== undefined) sheet.getRange(row, mapping["Score"] + 1).setValue(userData.score);
+      
       return response({ success: true, message: "Perfil atualizado com sucesso!" });
     }
   }
@@ -390,22 +474,29 @@ function updateUser(ss, email, userData) {
 function login(ss, email, pass) {
   const sheet = getSafeSheet(ss, 'Usuários');
   if (!sheet) return response({ success: false, message: "Erro: Tabela 'Usuários' não encontrada. Execute o setup." });
+  
   const data = sheet.getDataRange().getValues();
+  const mapping = getColumnMapping(sheet);
+  
   for (let i = 1; i < data.length; i++) {
-    if (data[i][2] && data[i][2].toString().toLowerCase() === email.toLowerCase() && data[i][3] && data[i][3].toString() === pass.toString()) {
+    const userEmail = data[i][mapping["Email"]];
+    const userPass = data[i][mapping["Senha"]];
+    
+    if (userEmail && userEmail.toString().toLowerCase() === email.toLowerCase() && 
+        userPass && userPass.toString() === pass.toString()) {
       return response({ success: true, data: { 
-        id: data[i][0], 
-        name: data[i][1], 
-        email: data[i][2], 
-        role: data[i][4],
-        telefone: data[i][6],
-        cpf: data[i][7],
-        nascimento: data[i][8],
-        cep: data[i][9],
-        endereco: data[i][10],
-        thermometer: data[i][11] || 'Morno',
-        score: data[i][12] || 'Bronze',
-        photo: data[i][13] || ''
+        id: data[i][mapping["ID"]], 
+        name: data[i][mapping["Nome"]], 
+        email: data[i][mapping["Email"]], 
+        role: data[i][mapping["Função"]],
+        telefone: data[i][mapping["Telefone"]],
+        cpf: data[i][mapping["CPF"]],
+        nascimento: data[i][mapping["Nascimento"]],
+        cep: data[i][mapping["CEP"]],
+        endereco: data[i][mapping["Endereco"]],
+        thermometer: data[i][mapping["Termômetro"]] || 'Morno',
+        score: data[i][mapping["Score"]] || 'Bronze',
+        photo: data[i][mapping["Foto"]] || ''
       } });
     }
   }
@@ -415,36 +506,60 @@ function login(ss, email, pass) {
 function register(ss, userData) {
   const sheet = getSafeSheet(ss, 'Usuários');
   if (!sheet) return response({ success: false, message: "Erro: Tabela 'Usuários' não encontrada." });
+  
   const data = sheet.getDataRange().getValues();
+  const mapping = getColumnMapping(sheet);
+  
   for (let i = 1; i < data.length; i++) {
-    if (data[i][2] && data[i][2].toString().toLowerCase() === userData.email.toLowerCase()) {
+    if (data[i][mapping["Email"]] && data[i][mapping["Email"]].toString().toLowerCase() === userData.email.toLowerCase()) {
       return response({ success: false, message: "E-mail já cadastrado." });
     }
   }
+  
   const id = 'U' + Math.floor(Math.random() * 1000000);
   const role = (userData.email.toLowerCase() === 'jvvpersonalizados@gmail.com') ? 'Admin' : 'client';
-  // Columns: ID, Nome, Email, Senha, Função, CriadoEm, Telefone, CPF, Nascimento, CEP, Endereco, Termômetro, Score, Foto
-  sheet.appendRow([id, userData.name, userData.email, userData.pass, role, new Date(), "", "", "", "", "", "Morno", "Bronze", ""]);
+  
+  // Criar array de linha baseado no mapeamento
+  const newRow = new Array(Object.keys(mapping).length);
+  newRow[mapping["ID"]] = id;
+  newRow[mapping["Nome"]] = userData.name;
+  newRow[mapping["Email"]] = userData.email;
+  newRow[mapping["Senha"]] = userData.pass;
+  newRow[mapping["Função"]] = role;
+  newRow[mapping["CriadoEm"]] = new Date();
+  newRow[mapping["Telefone"]] = "";
+  newRow[mapping["CPF"]] = "";
+  newRow[mapping["Nascimento"]] = "";
+  newRow[mapping["CEP"]] = "";
+  newRow[mapping["Endereco"]] = "";
+  newRow[mapping["Termômetro"]] = "Morno";
+  newRow[mapping["Score"]] = "Bronze";
+  newRow[mapping["Foto"]] = "";
+  
+  sheet.appendRow(newRow);
   return response({ success: true, data: { id, name: userData.name, email: userData.email, role: role, thermometer: "Morno", score: "Bronze", photo: "" } });
 }
 
 function getCatalog(ss) {
   const sheet = getSafeSheet(ss, 'Catálogo');
   if (!sheet) return response({ success: true, data: [] });
+  
   const data = sheet.getDataRange().getValues();
+  const mapping = getColumnMapping(sheet);
   const products = [];
+  
   for (let i = 1; i < data.length; i++) {
-    if (!data[i][1]) continue;
+    if (!data[i][mapping["Nome"]]) continue;
     products.push({
-      id: data[i][0],
-      name: data[i][1],
-      price: parseFloat(data[i][2] || 0),
-      stock: parseInt(data[i][3] || 0),
-      img: data[i][4],
-      preview: data[i][5] || '',
-      description: data[i][6] || '',
-      category: data[i][7] || 'Geral',
-      tags: data[i][8] ? data[i][8].toString().split(',') : []
+      id: data[i][mapping["ID"]],
+      name: data[i][mapping["Nome"]],
+      price: parseFloat(data[i][mapping["Preço"]] || 0),
+      stock: parseInt(data[i][mapping["Estoque"]] || 0),
+      img: data[i][mapping["Imagem"]],
+      preview: data[i][mapping["Preview"]] || '',
+      description: data[i][mapping["Descrição"]] || '',
+      category: data[i][mapping["Categoria"]] || 'Geral',
+      tags: data[i][mapping["Etiquetas"]] ? data[i][mapping["Etiquetas"]].toString().split(',') : []
     });
   }
   return response({ success: true, data: products });
@@ -806,14 +921,15 @@ function getFavorites(ss, email) {
   if (!sheet) return response({ success: true, data: [] });
   
   const data = sheet.getDataRange().getValues();
+  const mapping = getColumnMapping(sheet);
   const favorites = [];
   
   for (let i = 1; i < data.length; i++) {
-    if (data[i][0] && data[i][0].toString().toLowerCase() === email.toLowerCase()) {
+    if (data[i][mapping["Email"]] && data[i][mapping["Email"]].toString().toLowerCase() === email.toLowerCase()) {
       favorites.push({
-        productId: data[i][1],
-        folder: data[i][2],
-        addedAt: data[i][3]
+        productId: data[i][mapping["ProductId"]],
+        folder: data[i][mapping["Pasta"]],
+        addedAt: data[i][mapping["DataAdicao"]]
       });
     }
   }

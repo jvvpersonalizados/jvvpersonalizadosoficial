@@ -164,5 +164,17 @@ export const apiService = {
   
   async runSelfCorrection() {
     return this.post("runSelfCorrection", {});
+  },
+
+  async getLogs() {
+    return this.post("getLogs", {});
+  },
+
+  async clearLogs() {
+    return this.post("clearLogs", {});
+  },
+
+  async getDashboardData() {
+    return this.post("getDashboardData", {});
   }
 };
