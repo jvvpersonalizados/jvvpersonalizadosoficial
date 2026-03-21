@@ -24,13 +24,13 @@ function setupSpreadsheet() {
   const configs = getConfigs();
   const ss = SpreadsheetApp.openById(configs.spreadsheetId);
   const sheets = {
-    "Usuários": ["ID", "Nome", "Email", "Senha", "Função", "CriadoEm", "Telefone", "CPF", "Nascimento", "CEP", "Endereco"],
+    "Usuários": ["ID", "Nome", "Email", "Senha", "Função", "CriadoEm", "Telefone", "CPF", "Nascimento", "CEP", "Endereco", "Termômetro", "Score", "Foto"],
     "Pedidos": ["ID", "Usuário", "Email", "Total", "Status", "Itens", "Data", "Progresso"],
     "Catálogo": ["ID", "Nome", "Preço", "Estoque", "Imagem", "Preview", "Descrição", "Categoria", "Etiquetas"],
     "Configurações": ["Chave", "Valor"],
     "Banners": ["ID", "Título", "Subtítulo", "Imagem", "Link", "Ativo", "Ordem"],
     "Logs": ["DataHora", "Ação", "Usuário", "Status", "Detalhes"],
-    "Dashboard": ["Métrica", "Valor", "Gráfico Auxiliar"],
+    "Dashboard": ["Métrica", "Valor"],
     "Carrinhos": ["Email", "Itens", "UltimaAtualizacao"],
     "Favoritos": ["Email", "ProductId", "Pasta", "DataAdicao"]
   };
@@ -211,7 +211,7 @@ function doPost(e) {
       case 'searchCatalog': res = searchCatalog(ss, data.query); break;
       case 'getSettings': res = getSettings(ss); break;
       case 'updateSettings': res = updateSettings(ss, data.settings); break;
-      case 'calculateShipping': res = calculateShipping(data.cep); break;
+      case 'calculateShipping': res = calculateShipping(ss, data.cep); break;
       case 'ai_checkup': res = response({ success: true, status: getSystemStatus() }); break;
       case 'ai_read_data':
         const allData = {};
@@ -237,20 +237,33 @@ function doPost(e) {
   }
 }
 
-function calculateShipping(cep) {
-  // Lógica simples de frete baseada no CEP
+function calculateShipping(ss, cep) {
+  // Lógica de frete baseada no CEP e nas configurações da planilha
   const cleanCep = cep.replace(/\D/g, '');
   if (cleanCep.length < 8) return response({ success: false, message: "CEP Inválido" });
   
+  // Tenta buscar o frete fixo das configurações
+  let freteBase = 15.00;
+  try {
+    const settingsSheet = ss.getSheetByName('Configurações');
+    const settingsData = settingsSheet.getDataRange().getValues();
+    for (let i = 1; i < settingsData.length; i++) {
+      if (settingsData[i][0] === 'FRETE_FIXO') {
+        freteBase = parseFloat(settingsData[i][1]) || 15.00;
+        break;
+      }
+    }
+  } catch (e) {}
+
   const options = [
-    { nome: "Econômico (Correios)", valor: 15.00 },
-    { nome: "Express Premium (JVV)", valor: 35.00 }
+    { nome: "Econômico (Correios)", valor: freteBase },
+    { nome: "Express Premium (JVV)", valor: freteBase + 20.00 }
   ];
   
-  // Se o CEP começar com '0' ou '1' (SP/RJ), frete mais barato
+  // Se o CEP começar com '0' ou '1' (SP/RJ), frete com desconto de proximidade
   if (cleanCep.startsWith('0') || cleanCep.startsWith('1')) {
-    options[0].valor = 10.00;
-    options[1].valor = 25.00;
+    options[0].valor = Math.max(5, freteBase - 5.00);
+    options[1].valor = Math.max(15, freteBase + 10.00);
   }
   
   return response({ success: true, data: options });
@@ -342,6 +355,7 @@ function updateUser(ss, email, userData) {
       if (userData.nascimento !== undefined) sheet.getRange(i + 1, 9).setValue(userData.nascimento);
       if (userData.cep !== undefined) sheet.getRange(i + 1, 10).setValue(userData.cep);
       if (userData.endereco !== undefined) sheet.getRange(i + 1, 11).setValue(userData.endereco);
+      if (userData.photo !== undefined) sheet.getRange(i + 1, 14).setValue(userData.photo);
       return response({ success: true, message: "Perfil atualizado!" });
     }
   }
@@ -363,7 +377,8 @@ function login(ss, email, pass) {
         cpf: data[i][7],
         nascimento: data[i][8],
         cep: data[i][9],
-        endereco: data[i][10]
+        endereco: data[i][10],
+        photo: data[i][13] || ''
       } });
     }
   }
@@ -381,9 +396,9 @@ function register(ss, userData) {
   }
   const id = 'U' + Math.floor(Math.random() * 1000000);
   const role = (userData.email.toLowerCase() === 'jvvpersonalizados@gmail.com') ? 'Admin' : 'client';
-  // Columns: ID, Nome, Email, Senha, Função, CriadoEm, Telefone, CPF, Nascimento, CEP, Endereco
-  sheet.appendRow([id, userData.name, userData.email, userData.pass, role, new Date(), "", "", "", "", ""]);
-  return response({ success: true, data: { id, name: userData.name, email: userData.email, role: role } });
+  // Columns: ID, Nome, Email, Senha, Função, CriadoEm, Telefone, CPF, Nascimento, CEP, Endereco, Termômetro, Score, Foto
+  sheet.appendRow([id, userData.name, userData.email, userData.pass, role, new Date(), "", "", "", "", "", "Morno", "Bronze", ""]);
+  return response({ success: true, data: { id, name: userData.name, email: userData.email, role: role, thermometer: "Morno", score: "Bronze", photo: "" } });
 }
 
 function getCatalog(ss) {
@@ -541,7 +556,8 @@ function getUser(ss, email) {
           cep: data[i][9],
           endereco: data[i][10],
           thermometer: data[i][11] || 'Morno',
-          score: data[i][12] || 'Bronze'
+          score: data[i][12] || 'Bronze',
+          photo: data[i][13] || ''
         } 
       });
     }

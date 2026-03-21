@@ -195,7 +195,8 @@ export const UserPanelPage: React.FC<UserPanelPageProps> = ({
         cpf: checkoutData.cpf,
         nascimento: checkoutData.nascimento,
         cep: checkoutData.cep,
-        endereco: checkoutData.endereco
+        endereco: checkoutData.endereco,
+        photo: profilePic
       });
       if (res.success) {
         setShowSaveMsg(true);
@@ -210,7 +211,8 @@ export const UserPanelPage: React.FC<UserPanelPageProps> = ({
             cpf: checkoutData.cpf,
             nascimento: checkoutData.nascimento,
             cep: checkoutData.cep,
-            endereco: checkoutData.endereco
+            endereco: checkoutData.endereco,
+            photo: profilePic
           };
         });
       } else {
@@ -420,6 +422,12 @@ export const UserPanelPage: React.FC<UserPanelPageProps> = ({
       setIsAddingFolder(false);
     }
   };
+
+  React.useEffect(() => {
+    if (user?.photo) {
+      setProfilePic(user.photo);
+    }
+  }, [user?.photo]);
 
   React.useEffect(() => {
     if (user) {
