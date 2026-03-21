@@ -170,7 +170,9 @@ function doPost(e) {
       case 'addProduct': res = addProduct(ss, data.product); break;
       case 'deleteProduct': res = deleteProduct(ss, data.productId); break;
       case 'getUsers': res = getUsers(ss); break;
+      case 'getUser': res = getUser(ss, data.email); break;
       case 'deleteUser': res = deleteUser(ss, data.userId); break;
+      case 'getUserOrders': res = getUserOrders(ss, data.email); break;
       case 'getBanners': res = getBanners(ss); break;
       case 'addBanner': res = addBanner(ss, data.banner); break;
       case 'updateBanner': res = updateBanner(ss, data.bannerId, data.banner); break;
@@ -435,6 +437,48 @@ function getUsers(ss) {
     users.push({ id: data[i][0], name: data[i][1], email: data[i][2], role: data[i][4], createdAt: data[i][5] });
   }
   return response({ success: true, data: users });
+}
+
+function getUser(ss, email) {
+  const sheet = ss.getSheetByName('Usuários');
+  const data = sheet.getDataRange().getValues();
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][2].toString().toLowerCase() === email.toLowerCase()) {
+      return response({ 
+        success: true, 
+        data: { 
+          id: data[i][0], 
+          name: data[i][1], 
+          email: data[i][2], 
+          role: data[i][4],
+          createdAt: data[i][5],
+          // Adicione outros campos se necessário
+        } 
+      });
+    }
+  }
+  return response({ success: false, message: "Usuário não encontrado." });
+}
+
+function getUserOrders(ss, email) {
+  const sheet = ss.getSheetByName('Pedidos');
+  const data = sheet.getDataRange().getValues();
+  const orders = [];
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][2].toString().toLowerCase() === email.toLowerCase()) {
+      orders.push({ 
+        id: data[i][0], 
+        user: data[i][1], 
+        email: data[i][2], 
+        total: data[i][3], 
+        status: data[i][4], 
+        items: data[i][5], 
+        date: data[i][6], 
+        progress: data[i][7] 
+      });
+    }
+  }
+  return response({ success: true, data: orders });
 }
 
 function deleteUser(ss, userId) {
