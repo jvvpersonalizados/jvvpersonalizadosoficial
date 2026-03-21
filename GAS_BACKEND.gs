@@ -336,12 +336,12 @@ function updateUser(ss, email, userData) {
   for (let i = 1; i < data.length; i++) {
     if (data[i][2] && data[i][2].toString().toLowerCase() === email.toLowerCase()) {
       // Update columns: Nome(1), Telefone(6), CPF(7), Nascimento(8), CEP(9), Endereco(10)
-      if (userData.name) sheet.getRange(i + 1, 2).setValue(userData.name);
-      if (userData.telefone) sheet.getRange(i + 1, 7).setValue(userData.telefone);
-      if (userData.cpf) sheet.getRange(i + 1, 8).setValue(userData.cpf);
-      if (userData.nascimento) sheet.getRange(i + 1, 9).setValue(userData.nascimento);
-      if (userData.cep) sheet.getRange(i + 1, 10).setValue(userData.cep);
-      if (userData.endereco) sheet.getRange(i + 1, 11).setValue(userData.endereco);
+      if (userData.name !== undefined) sheet.getRange(i + 1, 2).setValue(userData.name);
+      if (userData.telefone !== undefined) sheet.getRange(i + 1, 7).setValue(userData.telefone);
+      if (userData.cpf !== undefined) sheet.getRange(i + 1, 8).setValue(userData.cpf);
+      if (userData.nascimento !== undefined) sheet.getRange(i + 1, 9).setValue(userData.nascimento);
+      if (userData.cep !== undefined) sheet.getRange(i + 1, 10).setValue(userData.cep);
+      if (userData.endereco !== undefined) sheet.getRange(i + 1, 11).setValue(userData.endereco);
       return response({ success: true, message: "Perfil atualizado!" });
     }
   }
@@ -526,7 +526,7 @@ function getUser(ss, email) {
   if (!sheet) return response({ success: false, message: "Tabela não encontrada." });
   const data = sheet.getDataRange().getValues();
   for (let i = 1; i < data.length; i++) {
-    if (data[i][2].toString().toLowerCase() === email.toLowerCase()) {
+    if (data[i][2] && data[i][2].toString().toLowerCase() === email.toLowerCase()) {
       return response({ 
         success: true, 
         data: { 
@@ -535,7 +535,13 @@ function getUser(ss, email) {
           email: data[i][2], 
           role: data[i][4],
           createdAt: data[i][5],
-          // Adicione outros campos se necessário
+          telefone: data[i][6],
+          cpf: data[i][7],
+          nascimento: data[i][8],
+          cep: data[i][9],
+          endereco: data[i][10],
+          thermometer: data[i][11] || 'Morno',
+          score: data[i][12] || 'Bronze'
         } 
       });
     }

@@ -203,7 +203,15 @@ export const UserPanelPage: React.FC<UserPanelPageProps> = ({
         // Update local user state if name changed
         setUser((prev: any) => {
           if (!prev) return prev;
-          return { ...prev, name: checkoutData.nome };
+          return { 
+            ...prev, 
+            name: checkoutData.nome,
+            telefone: checkoutData.telefone,
+            cpf: checkoutData.cpf,
+            nascimento: checkoutData.nascimento,
+            cep: checkoutData.cep,
+            endereco: checkoutData.endereco
+          };
         });
       } else {
         setError(res.message);
