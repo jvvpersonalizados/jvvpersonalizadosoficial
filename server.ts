@@ -336,6 +336,10 @@ app.post("/api/gas-proxy", async (req, res) => {
   const gasUrl = process.env.GAS_WEBAPP_URL || "https://script.google.com/macros/s/AKfycbwphZBklibQRJghRhs9-eYleKbIx8mbDqWSZGxmSbapOTuDDA9sg7xkGRxETCQSAwjCvQ/exec";
   const gasToken = (process.env.GAS_API_TOKEN || "JVV_STORE_SECRET_2026").trim();
   
+  if (!process.env.GAS_WEBAPP_URL) {
+    console.warn("[GAS Proxy] WARNING: GAS_WEBAPP_URL is not set! Using fallback URL.");
+  }
+  
   // Admin actions that require password validation
   const adminActions = [
     "getOrders", "updateOrderStatus", "getAdminStats", "updateProduct", 
@@ -359,6 +363,9 @@ app.post("/api/gas-proxy", async (req, res) => {
 
   try {
     console.log(`[GAS Proxy] Action: ${req.body.action} | URL: ${gasUrl}`);
+    if (req.body.action === 'addProduct') {
+      console.log(`[GAS Proxy] Product Data:`, JSON.stringify(req.body.product));
+    }
     console.log(`[GAS Proxy] Payload keys: ${Object.keys(req.body).join(", ")}`);
     
     // Injetar o token de segurança no corpo da requisição
@@ -371,7 +378,10 @@ app.post("/api/gas-proxy", async (req, res) => {
       timeout: 30000 // Aumentado para 30s para evitar timeouts em operações longas
     });
     
-    console.log(`[GAS Proxy] Success: ${response.data.success}`);
+    console.log(`[GAS Proxy] Success: ${response.data.success} | Message: ${response.data.message || 'No message'}`);
+    if (response.data.success === false) {
+      console.warn(`[GAS Proxy] Action ${req.body.action} failed:`, response.data.message);
+    }
     res.json(response.data);
   } catch (error: any) {
     console.error("[GAS Proxy] Error:", error.message);

@@ -328,6 +328,7 @@ export const AdminPortalPage: React.FC<AdminPortalProps> = ({ t, formatPrice }) 
     { id: 'settings', n: 'Configurações', i: Settings },
     { id: 'logs', n: 'Logs', i: Database },
     { id: 'ia', n: 'Inteligência IA', i: Rocket },
+    { id: 'status', n: 'Status do Sistema', i: Database },
   ];
 
   if (!isAuthenticated) {
@@ -366,6 +367,18 @@ export const AdminPortalPage: React.FC<AdminPortalProps> = ({ t, formatPrice }) 
               {isLoading ? 'VERIFICANDO...' : 'ENTRAR NO PORTAL'}
             </button>
           </form>
+          
+          <div className="mt-12 pt-8 border-t border-white/5 space-y-4">
+            <div className="flex flex-col items-center gap-2">
+              <span className="text-[8px] font-black uppercase text-zinc-600 tracking-widest">API Endpoint</span>
+              <code className="text-[9px] font-mono text-zinc-500 break-all bg-black/30 px-3 py-2 rounded-lg border border-white/5 w-full">
+                {apiService.getApiUrl('') || 'Local (Same Origin)'}
+              </code>
+            </div>
+            <p className="text-[8px] text-zinc-600 font-bold uppercase leading-relaxed max-w-[200px] mx-auto">
+              Certifique-se de que a URL acima aponta para o seu app no AI Studio.
+            </p>
+          </div>
           
           <p className="mt-10 text-[8px] text-zinc-600 font-bold uppercase tracking-widest">
             Ambiente Seguro & Criptografado
@@ -417,9 +430,15 @@ export const AdminPortalPage: React.FC<AdminPortalProps> = ({ t, formatPrice }) 
 
           <div className="p-4 bg-white/5 rounded-2xl border border-white/5">
             <p className="text-[8px] font-bold text-zinc-500 uppercase mb-2">Status do Sistema</p>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 mb-3">
               <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
               <span className="text-[9px] font-black uppercase">Online & Seguro</span>
+            </div>
+            <div className="pt-3 border-t border-white/5">
+              <p className="text-[7px] font-bold text-zinc-600 uppercase mb-1">API Endpoint</p>
+              <p className="text-[8px] font-mono text-zinc-500 break-all leading-tight">
+                {apiService.getApiUrl('') || 'Local (Same Origin)'}
+              </p>
             </div>
           </div>
         </div>
@@ -438,17 +457,21 @@ export const AdminPortalPage: React.FC<AdminPortalProps> = ({ t, formatPrice }) 
           
           <div className="flex gap-3">
             <button 
-              onClick={handleSyncCatalog}
+              onClick={() => fetchAdminData()}
               disabled={isLoading}
               className="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 px-5 py-2.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all border border-white/5"
             >
               <RefreshCw size={14} className={isLoading ? "animate-spin" : ""} />
+              Recarregar Dados
+            </button>
+            <button 
+              onClick={handleSyncCatalog}
+              disabled={isLoading}
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 px-5 py-2.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all shadow-lg shadow-blue-600/20"
+            >
+              <Rocket size={14} />
               Sincronizar Site
             </button>
-            <div className="bg-blue-600/10 border border-blue-600/20 px-4 py-2 rounded-full flex items-center gap-2">
-              <Database size={12} className="text-blue-500" />
-              <span className="text-[9px] font-black text-blue-400">V60.2 STABLE</span>
-            </div>
           </div>
         </header>
 
@@ -854,6 +877,83 @@ export const AdminPortalPage: React.FC<AdminPortalProps> = ({ t, formatPrice }) 
                 {isGenerating ? <RefreshCw className="animate-spin" /> : <MessageSquare size={20} />}
                 {isGenerating ? 'PROCESSANDO...' : 'GERAR E PUBLICAR'}
               </button>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'status' && (
+          <div className="space-y-8 animate-fade max-w-4xl mx-auto">
+            <div className="flex items-center gap-4 mb-8">
+              <div className="w-12 h-12 bg-blue-600/20 rounded-2xl flex items-center justify-center border border-blue-600/30">
+                <Database size={24} className="text-blue-500" />
+              </div>
+              <div>
+                <h3 className="text-xl font-black italic uppercase">Status do Sistema</h3>
+                <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">Diagnóstico de Conectividade</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-zinc-900/50 border border-white/5 p-8 rounded-[40px] space-y-6">
+                <h4 className="text-xs font-black uppercase italic text-blue-400 border-b border-white/5 pb-4">Configuração de API</h4>
+                
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-[8px] font-black text-zinc-500 uppercase mb-1 ml-1">Endpoint Atual</p>
+                    <div className="bg-black/50 p-4 rounded-2xl border border-white/5 font-mono text-[10px] text-zinc-400 break-all">
+                      {apiService.getApiUrl('') || 'Local (Same Origin)'}
+                    </div>
+                  </div>
+
+                  <div className="p-4 bg-blue-600/5 border border-blue-600/10 rounded-2xl">
+                    <p className="text-[9px] font-bold text-blue-400 leading-relaxed">
+                      Este endpoint deve apontar para a URL do seu app no AI Studio para que o Vercel consiga salvar dados.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-zinc-900/50 border border-white/5 p-8 rounded-[40px] space-y-6">
+                <h4 className="text-xs font-black uppercase italic text-purple-400 border-b border-white/5 pb-4">Sincronização GAS</h4>
+                
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center p-4 bg-black/30 rounded-2xl border border-white/5">
+                    <span className="text-[9px] font-bold text-zinc-500 uppercase">Planilha Conectada</span>
+                    <span className="text-[10px] font-black text-green-400 uppercase">Sim</span>
+                  </div>
+                  
+                  <div className="flex justify-between items-center p-4 bg-black/30 rounded-2xl border border-white/5">
+                    <span className="text-[9px] font-bold text-zinc-500 uppercase">Token de Segurança</span>
+                    <span className="text-[10px] font-black text-blue-400 uppercase">Configurado</span>
+                  </div>
+
+                  <button 
+                    onClick={handleSetupSystem}
+                    className="w-full py-4 bg-zinc-800 hover:bg-zinc-700 text-white text-[10px] font-black uppercase italic rounded-2xl transition-all border border-white/5"
+                  >
+                    Testar Conexão Google
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-zinc-900/50 border border-white/5 p-8 rounded-[40px]">
+              <h4 className="text-xs font-black uppercase italic text-zinc-400 border-b border-white/5 pb-4 mb-6">Dicas de Resolução de Problemas</h4>
+              <ul className="space-y-4">
+                {[
+                  { t: 'O produto não aparece após cadastrar?', d: 'Verifique se a URL do Google Apps Script está correta nas configurações do AI Studio.' },
+                  { t: 'Erro 401 ao salvar?', d: 'Sua senha administrativa pode estar incorreta ou expirada no navegador. Tente sair e entrar novamente.' },
+                  { t: 'Site no Vercel não atualiza?', d: 'Certifique-se de que a variável VITE_API_URL no Vercel aponta para este app do AI Studio.' }
+                ].map((item, i) => (
+                  <li key={i} className="flex gap-4">
+                    <div className="w-5 h-5 bg-zinc-800 rounded-full flex items-center justify-center text-[10px] font-black flex-shrink-0">{i+1}</div>
+                    <div>
+                      <p className="text-[10px] font-black uppercase text-white mb-1">{item.t}</p>
+                      <p className="text-[10px] text-zinc-500 leading-relaxed font-bold">{item.d}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
             </div>
           </div>
         )}
