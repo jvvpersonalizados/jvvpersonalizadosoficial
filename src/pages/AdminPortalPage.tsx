@@ -65,7 +65,10 @@ export const AdminPortalPage: React.FC<AdminPortalProps> = ({ t, formatPrice }) 
       if (ordersRes.success) setAdminOrders(ordersRes.data);
       if (usersRes.success) setAdminUsers(usersRes.data);
       if (statsRes.success) setAdminStats(statsRes.data);
-      if (catalogRes.success) setAdminProducts(catalogRes.data);
+      
+      // getCatalog returns the array directly
+      if (Array.isArray(catalogRes)) setAdminProducts(catalogRes);
+      
       if (bannersRes.success) setAdminBanners(bannersRes.data);
       if (logsRes.success) setAdminLogs(logsRes.data);
       if (settingsRes.success) setAdminSettings(settingsRes.data);
@@ -222,7 +225,10 @@ export const AdminPortalPage: React.FC<AdminPortalProps> = ({ t, formatPrice }) 
       // Use the store's API to generate and sync
       const response = await fetch(apiService.getApiUrl("/api/generate-post"), {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "X-Admin-Password": apiService.getAdminPassword()
+        },
         body: JSON.stringify({ prompt: promptIA })
       });
       const res = await response.json();

@@ -51,6 +51,13 @@ app.get("/api/ping", (req, res) => {
 
 // API Route for AI Post Generation
 app.post("/api/generate-post", async (req, res) => {
+  const adminPassword = (req.headers['x-admin-password'] as string || "").trim();
+  const expectedPassword = (process.env.ADMIN_PASSWORD || "JVV_ADMIN_2026").trim();
+
+  if (adminPassword !== expectedPassword) {
+    return res.status(401).json({ success: false, message: "Acesso administrativo negado." });
+  }
+
   try {
     const { prompt } = req.body;
     if (!prompt) return res.status(400).json({ success: false, error: "Prompt is required" });
