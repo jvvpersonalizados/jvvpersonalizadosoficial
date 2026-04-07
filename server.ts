@@ -10,8 +10,8 @@ const PORT = 3000;
 
 // Allow CORS for the admin panel URLs provided by the user
 const allowedOrigins = [
-  "https://ais-dev-ckq2phdbklxo2fmeruj3lj-150071934317.us-west1.run.app",
-  "https://ais-pre-ckq2phdbklxo2fmeruj3lj-150071934317.us-west1.run.app",
+  "https://ais-dev-tkzdgpghtor5jybn7tq3la-150071934317.us-west1.run.app",
+  "https://ais-pre-tkzdgpghtor5jybn7tq3la-150071934317.us-west1.run.app",
   "https://jvvstudio.vercel.app",
   "https://jvvpersonalizadosoficial.vercel.app"
 ];
@@ -335,12 +335,12 @@ app.post("/api/gas-proxy", async (req, res) => {
     "addProduct", "getUsers", "deleteUser", "deleteProduct", 
     "getBanners", "addBanner", "updateBanner", "deleteBanner", 
     "runSelfCorrection", "getLogs", "clearLogs", "getDashboardData", 
-    "getSettings", "updateSettings"
+    "getSettings", "updateSettings", "setupSpreadsheet", "remote_config"
   ];
 
   if (adminActions.includes(req.body.action)) {
-    const adminPassword = req.headers['x-admin-password'];
-    const expectedPassword = process.env.ADMIN_PASSWORD || "JVV_ADMIN_2026";
+    const adminPassword = (req.headers['x-admin-password'] as string || "").trim();
+    const expectedPassword = (process.env.ADMIN_PASSWORD || "JVV_ADMIN_2026").trim();
     
     if (adminPassword !== expectedPassword) {
       return res.status(401).json({ 

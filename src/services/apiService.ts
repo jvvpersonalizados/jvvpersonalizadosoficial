@@ -6,7 +6,7 @@ export interface ApiResponse {
 
 export const apiService = {
   getApiUrl(path: string) {
-    const baseUrl = (import.meta as any).env.VITE_API_URL || "";
+    const baseUrl = (import.meta as any).env.VITE_API_URL || (import.meta as any).env.KNOW_API_URL || "";
     return `${baseUrl}${path}`;
   },
 
@@ -30,11 +30,10 @@ export const apiService = {
         body: JSON.stringify({ action, ...payload }),
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
       const data = await response.json();
+      if (!response.ok) {
+        return { success: false, message: data.message || `Erro ${response.status}` };
+      }
       return data;
     } catch (error) {
       console.error("API Error:", error);
@@ -65,7 +64,12 @@ export const apiService = {
           "X-Admin-Password": this.getAdminPassword()
         }
       });
-      return await response.json();
+      
+      const data = await response.json();
+      if (!response.ok) {
+        return { success: false, message: data.message || `Erro ${response.status}` };
+      }
+      return data;
     } catch (error) {
       return { success: false, message: "Erro ao sincronizar catálogo." };
     }

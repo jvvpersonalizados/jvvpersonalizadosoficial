@@ -735,6 +735,7 @@ function syncCatalog(ss, products) {
       addProduct(ss, p);
     }
   });
+  triggerVercelDeploy();
   return response({ success: true, message: "Catálogo sincronizado e atualizado!" });
 }
 
@@ -904,6 +905,7 @@ function deleteProduct(ss, productId) {
   for (let i = 1; i < data.length; i++) {
     if (getVal(data[i], mapping, "ID") === productId) {
       sheet.deleteRow(i + 1);
+      triggerVercelDeploy();
       return response({ success: true, message: "Produto removido!" });
     }
   }
@@ -949,6 +951,7 @@ function addBanner(ss, banner) {
   });
   
   sheet.appendRow(newRow);
+  triggerVercelDeploy();
   return response({ success: true, message: "Banner adicionado!" });
 }
 
@@ -972,6 +975,7 @@ function updateBanner(ss, bannerId, banner) {
       updateField("Ativo", banner.active);
       updateField("Ordem", banner.order);
       
+      triggerVercelDeploy();
       return response({ success: true, message: "Banner atualizado!" });
     }
   }
@@ -985,6 +989,7 @@ function deleteBanner(ss, bannerId) {
   for (let i = 1; i < data.length; i++) {
     if (getVal(data[i], mapping, "ID") === bannerId) {
       sheet.deleteRow(i + 1);
+      triggerVercelDeploy();
       return response({ success: true, message: "Banner removido!" });
     }
   }
