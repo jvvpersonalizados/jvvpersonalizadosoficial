@@ -261,6 +261,13 @@ app.get("/api/instagram", (req, res) => {
 
 // API Route for Catalog Sync
 app.get("/api/sync-catalog", async (req, res) => {
+  const adminPassword = req.headers['x-admin-password'];
+  const expectedPassword = process.env.ADMIN_PASSWORD || "JVV_ADMIN_2026";
+
+  if (adminPassword !== expectedPassword) {
+    return res.status(401).json({ success: false, message: "Acesso administrativo negado. Senha incorreta." });
+  }
+
   try {
     const url = "https://www.jvvpersonalizados.com.br/";
     const response = await axios.get(url, {
@@ -319,9 +326,32 @@ app.get("/api/sync-catalog", async (req, res) => {
 
 // Proxy for Google Apps Script to avoid CORS issues
 app.post("/api/gas-proxy", async (req, res) => {
+  const gasUrl = process.env.GAS_WEBAPP_URL || "https://script.google.com/macros/s/AKfycbwphZBklibQRJghRhs9-eYleKbIx8mbDqWSZGxmSbapOTuDDA9sg7xkGRxETCQSAwjCvQ/exec";
+  const gasToken = (process.env.GAS_API_TOKEN || "JVV_STORE_SECRET_2026").trim();
+  
+  // Admin actions that require password validation
+  const adminActions = [
+    "getOrders", "updateOrderStatus", "getAdminStats", "updateProduct", 
+    "addProduct", "getUsers", "deleteUser", "deleteProduct", 
+    "getBanners", "addBanner", "updateBanner", "deleteBanner", 
+    "runSelfCorrection", "getLogs", "clearLogs", "getDashboardData", 
+    "getSettings", "updateSettings"
+  ];
+
+  if (adminActions.includes(req.body.action)) {
+    const adminPassword = req.headers['x-admin-password'];
+    const expectedPassword = process.env.ADMIN_PASSWORD || "JVV_ADMIN_2026";
+    
+    if (adminPassword !== expectedPassword) {
+      return res.status(401).json({ 
+        success: false, 
+        message: "Acesso administrativo negado. Senha incorreta." 
+      });
+    }
+  }
+
   try {
-    const gasUrl = process.env.GAS_WEBAPP_URL || "https://script.google.com/macros/s/AKfycbwphZBklibQRJghRhs9-eYleKbIx8mbDqWSZGxmSbapOTuDDA9sg7xkGRxETCQSAwjCvQ/exec";
-    const gasToken = (process.env.GAS_API_TOKEN || "JVV_STORE_SECRET_2026").trim();
+    console.log(`[GAS Proxy] Action: ${req.body.action} | URL: ${gasUrl}`);
     
     // Injetar o token de segurança no corpo da requisição
     const bodyWithToken = { ...req.body, token: gasToken };
@@ -330,12 +360,22 @@ app.post("/api/gas-proxy", async (req, res) => {
       headers: {
         "Content-Type": "application/json",
       },
-      timeout: 15000
+      timeout: 30000 // Aumentado para 30s para evitar timeouts em operações longas
     });
+    
+    console.log(`[GAS Proxy] Success: ${response.data.success}`);
     res.json(response.data);
   } catch (error: any) {
-    console.error("GAS Proxy error:", error.message);
-    res.status(500).json({ success: false, error: error.message });
+    console.error("[GAS Proxy] Error:", error.message);
+    if (error.response) {
+      console.error("[GAS Proxy] GAS Error Response:", JSON.stringify(error.response.data));
+    }
+    res.status(500).json({ 
+      success: false, 
+      message: "Erro na comunicação com o servidor galáctico.",
+      error: error.message,
+      details: error.response?.data || "Sem detalhes adicionais"
+    });
   }
 });
 
@@ -363,12 +403,11 @@ if (process.env.NODE_ENV === "production") {
       appType: "spa",
     });
     app.use(vite.middlewares);
-    app.listen(PORT, "0.0.0.0", () => {
-      console.log(`Server running on http://localhost:${PORT}`);
-    });
   };
   setupDev();
 }
 
-export default app;
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`Server running on http://localhost:${PORT}`);
+});
 

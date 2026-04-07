@@ -256,6 +256,7 @@ function doPost(e) {
       case 'getLogs': res = getLogs(ss); break;
       case 'clearLogs': res = clearLogs(ss); break;
       case 'getDashboardData': res = getDashboardData(ss); break;
+      case 'setupSpreadsheet': res = response({ success: true, message: setupSpreadsheet() }); break;
       case 'ai_checkup': res = response({ success: true, status: getSystemStatus() }); break;
       case 'ai_read_data':
         const allData = {};
@@ -644,11 +645,12 @@ function addProduct(ss, product) {
     else if (h === "imagem") newRow[index] = product.image;
     else if (h === "descricao") newRow[index] = product.description || '';
     else if (h === "categoria") newRow[index] = product.category || 'Geral';
-    else if (h === "etiquetas") newRow[index] = product.tags || '';
+    else if (h === "etiquetas") newRow[index] = Array.isArray(product.tags) ? product.tags.join(',') : (product.tags || '');
     else newRow[index] = "";
   });
   
   sheet.appendRow(newRow);
+  triggerVercelDeploy();
   return response({ success: true, message: "Produto adicionado!" });
 }
 
@@ -663,7 +665,10 @@ function updateProduct(ss, productId, product) {
       const row = i + 1;
       const updateField = (key, val) => {
         const idx = mapping[key.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/-/g, "").replace(/\s/g, "")];
-        if (idx !== undefined && val !== undefined) sheet.getRange(row, idx + 1).setValue(val);
+        if (idx !== undefined && val !== undefined) {
+          const finalVal = (key === "Etiquetas" && Array.isArray(val)) ? val.join(',') : val;
+          sheet.getRange(row, idx + 1).setValue(finalVal);
+        }
       };
 
       updateField("Nome", product.name);
@@ -674,6 +679,7 @@ function updateProduct(ss, productId, product) {
       updateField("Categoria", product.category);
       updateField("Etiquetas", product.tags);
       
+      triggerVercelDeploy();
       return response({ success: true, message: "Produto atualizado!" });
     }
   }
@@ -788,7 +794,21 @@ function updateSettings(ss, newSettings) {
       sheet.appendRow(newRow);
     }
   }
+  triggerVercelDeploy();
   return response({ success: true, message: "Configurações atualizadas!" });
+}
+
+/**
+ * GATILHO DE DEPLOY NO VERCEL
+ * Dispara o hook de deploy quando ocorrem mudanças críticas.
+ */
+function triggerVercelDeploy() {
+  const hookUrl = "https://api.vercel.com/v1/integrations/deploy/prj_vSYnGTyKyrkiPz4BL2ZAwerE0EFp/g6QEkDiEje";
+  try {
+    UrlFetchApp.fetch(hookUrl, { method: "POST" });
+  } catch (e) {
+    console.error("Erro ao disparar deploy no Vercel: " + e.toString());
+  }
 }
 
 function getUsers(ss) {
@@ -1140,4 +1160,9 @@ function removeFavorite(ss, email, productId, folder) {
     }
   }
   return response({ success: false, message: "Favorito não encontrado." });
+}
+
+function response(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
 }

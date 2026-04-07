@@ -15,9 +15,11 @@ import { OrbitalLogo } from './components/OrbitalLogo';
 import { MobileLayout } from './components/MobileLayout';
 import { apiService } from './services/apiService';
 
-const WHATSAPP_NUMBER = "5517981270724";
+const DEFAULT_WHATSAPP = "5517981270724";
 
 export default function App() {
+  const [whatsappNumber, setWhatsappNumber] = useState(DEFAULT_WHATSAPP);
+  const [storeName, setStoreName] = useState("JVV Store");
   const [isMobile, setIsMobile] = useState(false);
   const [currentPage, setCurrentPage] = useState('home');
   const [navigationHistory, setNavigationHistory] = useState<string[]>(['home']);
@@ -110,6 +112,25 @@ export default function App() {
   const [themeColor, setThemeColor] = useState(() => {
     return localStorage.getItem('jvv-theme-color') || '#9333ea';
   });
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const res = await apiService.getSettings();
+        if (res.success && res.data) {
+          if (res.data.WHATSAPP) setWhatsappNumber(res.data.WHATSAPP);
+          if (res.data.NOME_LOJA) {
+            setStoreName(res.data.NOME_LOJA);
+            document.title = res.data.NOME_LOJA;
+          }
+          if (res.data.COR_PRIMARIA) setThemeColor(res.data.COR_PRIMARIA);
+        }
+      } catch (err) {
+        console.error("Erro ao carregar configurações:", err);
+      }
+    };
+    fetchSettings();
+  }, []);
 
   useEffect(() => {
     const checkMobile = () => {
@@ -317,13 +338,13 @@ export default function App() {
       };
       await apiService.saveOrder(orderData);
       
-      const msg = `Olá, confirmo meu pedido na JVV STORE! \n\nCliente: ${checkoutData.nome}\nPedido: ${orderData.items}\nTotal: ${formatPrice(totalGeral)}\nPagamento: ${paymentMethod.toUpperCase()}`;
-      window.location.href = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`;
+      const msg = `Olá, confirmo meu pedido na ${storeName.toUpperCase()}! \n\nCliente: ${checkoutData.nome}\nPedido: ${orderData.items}\nTotal: ${formatPrice(totalGeral)}\nPagamento: ${paymentMethod.toUpperCase()}`;
+      window.location.href = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(msg)}`;
     } catch (err) {
       console.error("Erro ao finalizar pedido:", err);
       alert(t("Erro ao salvar pedido. Redirecionando para o WhatsApp...", "Error saving order. Redirecting to WhatsApp..."));
-      const msg = `Olá, confirmo meu pedido na JVV STORE! Valor Total: ${formatPrice(totalGeral)}`;
-      window.location.href = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`;
+      const msg = `Olá, confirmo meu pedido na ${storeName.toUpperCase()}! Valor Total: ${formatPrice(totalGeral)}`;
+      window.location.href = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(msg)}`;
     } finally {
       setIsProcessing(false);
     }

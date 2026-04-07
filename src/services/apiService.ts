@@ -10,6 +10,14 @@ export const apiService = {
     return `${baseUrl}${path}`;
   },
 
+  getAdminPassword() {
+    return localStorage.getItem('jvv-admin-password') || (import.meta as any).env.VITE_ADMIN_PASSWORD || "";
+  },
+
+  setAdminPassword(password: string) {
+    localStorage.setItem('jvv-admin-password', password);
+  },
+
   async post(action: string, payload: any): Promise<ApiResponse> {
     try {
       // Use the local proxy to avoid CORS issues with Google Apps Script
@@ -17,6 +25,7 @@ export const apiService = {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "X-Admin-Password": this.getAdminPassword()
         },
         body: JSON.stringify({ action, ...payload }),
       });
@@ -51,7 +60,11 @@ export const apiService = {
 
   async syncCatalog() {
     try {
-      const response = await fetch(this.getApiUrl("/api/sync-catalog"));
+      const response = await fetch(this.getApiUrl("/api/sync-catalog"), {
+        headers: {
+          "X-Admin-Password": this.getAdminPassword()
+        }
+      });
       return await response.json();
     } catch (error) {
       return { success: false, message: "Erro ao sincronizar catálogo." };
@@ -176,5 +189,13 @@ export const apiService = {
 
   async getDashboardData() {
     return this.post("getDashboardData", {});
+  },
+
+  async getSettings() {
+    return this.post("getSettings", {});
+  },
+
+  async updateSettings(settings: any) {
+    return this.post("updateSettings", { settings });
   }
 };
