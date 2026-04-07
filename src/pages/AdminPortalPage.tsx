@@ -138,17 +138,37 @@ export const AdminPortalPage: React.FC<AdminPortalProps> = ({ t, formatPrice }) 
 
   const handleAddProduct = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validação básica
+    if (!newProduct.name || !newProduct.price) {
+      alert(t("Nome e preço são obrigatórios!", "Name and price are required!"));
+      return;
+    }
+
+    const price = parseFloat(newProduct.price);
+    const stock = parseInt(newProduct.stock);
+
+    if (isNaN(price)) {
+      alert(t("O preço deve ser um número válido!", "Price must be a valid number!"));
+      return;
+    }
+
     setIsAddingProduct(true);
     try {
       const res = await apiService.addProduct({
         ...newProduct,
-        price: parseFloat(newProduct.price),
-        stock: parseInt(newProduct.stock)
+        price,
+        stock: isNaN(stock) ? 0 : stock
       });
       if (res.success) {
         setNewProduct({ name: '', price: '', image: '', description: '', stock: '10', category: 'Geral', tags: '' });
         fetchAdminData();
+        alert(t("Produto adicionado com sucesso!", "Product added successfully!"));
+      } else {
+        alert(t("Erro ao adicionar produto: ", "Error adding product: ") + (res.message || "Erro desconhecido"));
       }
+    } catch (err: any) {
+      alert(t("Erro de conexão: ", "Connection error: ") + err.message);
     } finally {
       setIsAddingProduct(false);
     }
@@ -194,7 +214,12 @@ export const AdminPortalPage: React.FC<AdminPortalProps> = ({ t, formatPrice }) 
       if (res.success) {
         setNewBanner({ title: '', subtitle: '', image: '', link: '', active: 'TRUE', order: '0' });
         fetchAdminData();
+        alert(t("Banner adicionado com sucesso!", "Banner added successfully!"));
+      } else {
+        alert(t("Erro ao adicionar banner: ", "Error adding banner: ") + (res.message || "Erro desconhecido"));
       }
+    } catch (err: any) {
+      alert(t("Erro de conexão: ", "Connection error: ") + err.message);
     } finally {
       setIsAddingBanner(false);
     }

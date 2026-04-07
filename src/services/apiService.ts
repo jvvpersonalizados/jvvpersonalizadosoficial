@@ -7,7 +7,9 @@ export interface ApiResponse {
 export const apiService = {
   getApiUrl(path: string) {
     const baseUrl = (import.meta as any).env.VITE_API_URL || (import.meta as any).env.KNOW_API_URL || "";
-    return `${baseUrl}${path}`;
+    const fullUrl = `${baseUrl}${path}`;
+    console.log(`[API Service] Calling: ${fullUrl}`);
+    return fullUrl;
   },
 
   getAdminPassword() {

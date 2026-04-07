@@ -359,6 +359,7 @@ app.post("/api/gas-proxy", async (req, res) => {
 
   try {
     console.log(`[GAS Proxy] Action: ${req.body.action} | URL: ${gasUrl}`);
+    console.log(`[GAS Proxy] Payload keys: ${Object.keys(req.body).join(", ")}`);
     
     // Injetar o token de segurança no corpo da requisição
     const bodyWithToken = { ...req.body, token: gasToken };
